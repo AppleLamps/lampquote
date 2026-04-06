@@ -14,6 +14,7 @@ export const POE_TEXT_MODEL_OPTIONS = [
   { value: "seed-2.0-pro", label: "Seed 2.0 Pro", description: "ByteDance" },
   { value: "grok-4.1-fast-reasoning", label: "Grok 4.1 Fast Reasoning", description: "xAI" },
   { value: "grok-4.20-multi-agent", label: "Grok 4.20 Multi-Agent", description: "xAI" },
+  { value: "gemma-4-31b", label: "Gemma 4 31B", description: "Google open model" },
 ] as const;
 
 export const POE_TEXT_MODEL_IDS: string[] = POE_TEXT_MODEL_OPTIONS.map((m) => m.value);
