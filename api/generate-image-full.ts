@@ -1,6 +1,7 @@
 import {
   poeChatJson,
   getAssistantText,
+  stripAIArtifacts,
   extractImageUrlFromAssistant,
   parseDataUrl,
   withCorsAndAuth,
@@ -125,7 +126,7 @@ Output only the final image prompt, nothing else.`,
     max_tokens: 1500,
   });
 
-  const optimizedPrompt = getAssistantText(promptData!).trim();
+  const optimizedPrompt = stripAIArtifacts(getAssistantText(promptData!));
   if (!optimizedPrompt) {
     throw new Error("Failed to generate optimized prompt");
   }

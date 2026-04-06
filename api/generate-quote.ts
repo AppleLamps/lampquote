@@ -2,6 +2,7 @@ import {
   decodeDataUrlText,
   poeChatJson,
   getAssistantText,
+  stripAIArtifacts,
   withCorsAndAuth,
   type ChatMessage,
 } from "../lib/poe-server.js";
@@ -102,7 +103,7 @@ Rules:
     max_tokens: 500,
   });
 
-  const quote = getAssistantText(data!).trim();
+  const quote = stripAIArtifacts(getAssistantText(data!));
   if (!quote) {
     throw new Error("No quote generated");
   }

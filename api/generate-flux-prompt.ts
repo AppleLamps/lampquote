@@ -1,4 +1,4 @@
-import { poeChatJson, getAssistantText, withCorsAndAuth } from "../lib/poe-server.js";
+import { poeChatJson, getAssistantText, stripAIArtifacts, withCorsAndAuth } from "../lib/poe-server.js";
 import { DEFAULT_QUOTE_TEXT_MODEL, resolveAllowedTextModel } from "../lib/poe-text-models.js";
 import { GROK_IMAGINE_SYSTEM_PROMPT } from "../lib/grok-imagine-system-prompt.js";
 const MAX_TEXT_LENGTH = 50000;
@@ -41,6 +41,6 @@ export default withCorsAndAuth(async (req, res, apiKey) => {
     max_tokens: 3500,
   });
 
-  const generatedPrompt = getAssistantText(data!).trim();
+  const generatedPrompt = stripAIArtifacts(getAssistantText(data!));
   return void res.status(200).json({ prompt: generatedPrompt });
 });
