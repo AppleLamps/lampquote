@@ -12,11 +12,16 @@
 ## Learned Workspace Facts
 
 - **Project name**: LampScribe — a Vite 5 + React 18 + TypeScript SPA deployed on Vercel.
-- **Tech stack**: shadcn/ui, Tailwind CSS 3, TanStack Query, React Router 6. No database, no auth provider, no cloud storage.
+- **Tech stack**: shadcn/ui, Tailwind CSS 3, React Router 6. Client data loads via `fetch` and React state (`postJson` in `src/lib/api.ts`) — no TanStack Query. No database, no auth provider, no cloud storage.
 - **No authentication**: fully public app; `src/components/auth/` and `src/hooks/useAuth.ts` were deleted; do not recreate them.
 - **Quote persistence**: `localStorage` key `lampscribe-quotes-v1`; cross-tab sync via custom `lampscribe-quotes-changed` window event.
-- **AI backend**: Poe OpenAI-compatible API at `https://api.poe.com/v1`. Three Vercel serverless routes — `api/generate-quote.ts`, `api/generate-flux-prompt.ts`, `api/generate-image.ts` — share `lib/poe-server.ts`.
-- **Vercel config**: `maxDuration` 300 s for `generate-image` (two sequential Poe calls); 60 s for the other two routes; SPA rewrite excludes `/api/*`. Vercel Pro required for `maxDuration > 60`.
+- **AI backend**: Poe OpenAI-compatible API at `https://api.poe.com/v1`. Five Vercel serverless routes under `api/` share `lib/poe-server.ts`:
+  - `generate-quote.ts` — quotes from text/files + directions (60 s).
+  - `generate-flux-prompt.ts` — flux-style prompt from idea + directions (60 s).
+  - `generate-image-full.ts` — **main image UI** (`ImageGenerator`): two sequential Poe calls (prompt helper → image model) (300 s).
+  - `generate-image.ts` — **single Poe call**: render image from an already-optimized prompt string (300 s).
+  - `generate-image-prompt.ts` — prompt-helper only (60 s); **not called from the SPA** today (deployed for direct/API use).
+- **Vercel config**: `maxDuration` 300 s for `generate-image.ts` and `generate-image-full.ts`; 60 s for the other three routes; SPA rewrite excludes `/api/*`. Vercel Pro required for `maxDuration > 60`.
 - **Local dev**: `vercel dev` on port 3000 + `npm run dev` (Vite on 8080); Vite proxies `/api` → `http://127.0.0.1:3000`.
 - **File attachments**: read client-side as base64 data URLs; 3 MB per-file cap (Vercel body limit 4.5 MB, base64 adds ~33% overhead).
 - **Supported file types**: `image/*`, `.pdf`, `.doc`, `.docx`, `.txt`, `.md`.
@@ -30,7 +35,7 @@
 |---|---|
 | Frontend | Vite 5 + React 18 + TypeScript |
 | UI components | shadcn/ui + Tailwind CSS 3 |
-| Data fetching | TanStack Query |
+| Server requests | `fetch` + React state (`src/lib/api.ts` `postJson`) |
 | Routing | React Router 6 |
 | Persistence | `localStorage` only (no DB) |
 | AI API | Poe OpenAI-compatible (`api.poe.com/v1`) |
@@ -42,16 +47,17 @@
 |---|---|---|
 | `POE_API_KEY` | Server only | Poe API authentication — never expose to client |
 | `POE_APP_URL` | Server only | Optional `HTTP-Referer` for Poe leaderboard attribution |
-| `POE_IMAGE_PROMPT_MODEL` | Server only | Override prompt-optimizer model (default `Gemini-3-Pro`) |
+| `POE_IMAGE_PROMPT_MODEL` | Server only | Override prompt-optimizer model (default `gemini-3.1-pro`) |
 | `VITE_API_BASE` | Client | Optional override for local dev when Vite and `vercel dev` use different ports |
 
 ## Poe API Notes
 
 - API base: `https://api.poe.com/v1` (OpenAI-compatible format, not OpenAI).
 - Model names must be **lowercase kebab-case** as shown on [poe.com/api/models](https://poe.com/api/models).
-- Text models in use: `gemini-3-flash` (default), `gemini-3.1-pro`, `gemini-2.5-flash`, `gemini-2.5-pro`, `claude-sonnet-4.6`, `claude-opus-4.6`, `claude-haiku-4.5`, `gpt-5.4`, `gpt-5.4-mini`, `grok-4`
-- Image models in use: `gpt-image-1.5` (default), `imagen-4`, `imagen-4-ultra`, `flux-pro-1.1`, `flux-2-pro`, `dall-e-3`, `flux-schnell`
-- Prompt-optimizer model (image pipeline step 1): `gemini-3.1-pro` (override via `POE_IMAGE_PROMPT_MODEL`)
+- **Text models allowed by API** (`generate-quote`, `generate-flux-prompt`): `gemini-3-flash` (default), `gemini-3.1-pro`, `gemini-2.5-flash`, `gemini-2.5-pro`, `claude-sonnet-4.6`, `claude-opus-4.6`, `claude-haiku-4.5`, `gpt-5.4`, `gpt-5.4-mini`, `grok-4`.
+- **Text models in the quote / flux UI dropdowns** (subset): `gemini-3-flash`, `gemini-3.1-pro`, `gemini-2.5-flash`, `claude-sonnet-4.6`, `claude-opus-4.6`, `gpt-5.4`, `grok-4` — API still accepts the full allowlist if passed non-UI clients.
+- **Image models** (`generate-image`, `generate-image-full` allowlists): `gpt-image-1.5` (default), `imagen-4`, `imagen-4-ultra`, `nano-banana-2`, `nano-banana`, `nano-banana-pro`, `grok-imagine-image`, `flux-pro-1.1`, `flux-2-pro`, `dall-e-3`, `wan-2.7`, `seedream-5.0-lite`, `seedream-4.5`, `flux-schnell`.
+- Prompt-optimizer model (image pipeline step 1 in `generate-image-full` / `generate-image-prompt`): `gemini-3.1-pro` unless overridden by `POE_IMAGE_PROMPT_MODEL`.
 - Old Lovable gateway names (e.g. `google/gemini-3-flash-preview`) and old PascalCase names (e.g. `Gemini-3-Flash`, `Claude-Sonnet-4.6`) are invalid — always use the lowercase ID from the models page.
 
 ## File Handling
