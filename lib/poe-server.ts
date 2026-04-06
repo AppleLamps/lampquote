@@ -89,12 +89,13 @@ export function getAssistantText(data: {
  */
 export function stripAIArtifacts(text: string): string {
   let out = text;
-  // Remove <think>…</think> and <thinking>…</thinking> blocks (greedy, multiline)
-  out = out.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, "");
+  // Remove <think>…</think> and <thinking>…</thinking> blocks (separate patterns to avoid cross-matching)
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  out = out.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
   // Unwrap <output>…</output> wrapper (keep inner content)
   out = out.replace(/<output>([\s\S]*?)<\/output>/gi, "$1");
   // Remove bracketed citation markers like [1], [2, 3], [1][2]
-  out = out.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, "");
+  out = out.replace(/\[\d+(?:\s*,\s*\d+)*\]/g, "");
   // Remove lenticular bracket citations like 【1†source】 or 【2:3†file.pdf】
   out = out.replace(/【[^】]*】/g, "");
   return out.trim();
