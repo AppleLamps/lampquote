@@ -11,11 +11,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 
 const IMAGE_MODELS = [
-  { value: "GPT-Image-1.5", label: "GPT Image 1.5", description: "Versatile OpenAI image" },
-  { value: "Imagen-4", label: "Imagen 4", description: "Google Imagen" },
-  { value: "FLUX-pro-1.1", label: "FLUX Pro 1.1", description: "High-quality diffusion" },
-  { value: "DALL-E-3", label: "DALL-E 3", description: "OpenAI classic" },
-  { value: "FLUX-schnell", label: "FLUX Schnell", description: "Fast FLUX" },
+  { value: "gpt-image-1.5", label: "GPT Image 1.5", description: "OpenAI — versatile" },
+  { value: "imagen-4", label: "Imagen 4", description: "Google Imagen" },
+  { value: "imagen-4-ultra", label: "Imagen 4 Ultra", description: "Google — highest quality" },
+  { value: "nano-banana-2", label: "Nano Banana 2", description: "Google — fast & balanced" },
+  { value: "nano-banana", label: "Nano Banana", description: "Google — affordable" },
+  { value: "nano-banana-pro", label: "Nano Banana Pro", description: "Google — high quality" },
+  { value: "grok-imagine-image", label: "Grok Imagine", description: "xAI image model" },
+  { value: "flux-pro-1.1", label: "FLUX Pro 1.1", description: "High-quality diffusion" },
+  { value: "flux-2-pro", label: "FLUX 2 Pro", description: "Latest FLUX" },
+  { value: "dall-e-3", label: "DALL-E 3", description: "OpenAI classic" },
+  { value: "wan-2.7", label: "Wan 2.7", description: "Empirio Labs" },
+  { value: "seedream-5.0-lite", label: "Seedream 5.0 Lite", description: "Bytedance — fast" },
+  { value: "seedream-4.5", label: "Seedream 4.5", description: "Bytedance" },
+  { value: "flux-schnell", label: "FLUX Schnell", description: "Fastest & cheapest" },
 ];
 
 const STEP_MESSAGES = [
@@ -32,7 +41,7 @@ export function ImageGenerator() {
   const [progress, setProgress] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [additionalDirections, setAdditionalDirections] = useState("");
-  const [selectedModel, setSelectedModel] = useState("GPT-Image-1.5");
+  const [selectedModel, setSelectedModel] = useState("gpt-image-1.5");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -117,7 +126,7 @@ export function ImageGenerator() {
     setImageDescription("");
     setAttachedFiles([]);
     setAdditionalDirections("");
-    setSelectedModel("GPT-Image-1.5");
+    setSelectedModel("gpt-image-1.5");
   };
 
   const handleDownload = async () => {

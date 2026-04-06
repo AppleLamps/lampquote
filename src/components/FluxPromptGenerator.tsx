@@ -8,12 +8,13 @@ import { Loader2, Sparkles, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AI_MODELS = [
-  { value: "Gemini-3-Flash", label: "Gemini 3 Flash", description: "Fast & balanced" },
-  { value: "Gemini-3-Pro", label: "Gemini 3 Pro", description: "Strong reasoning" },
-  { value: "Claude-Sonnet-4.6", label: "Claude Sonnet 4.6", description: "Capable generalist" },
-  { value: "Claude-Opus-4.6", label: "Claude Opus 4.6", description: "Highest quality" },
-  { value: "GPT-5.4", label: "GPT-5.4", description: "OpenAI flagship" },
-  { value: "Grok-4", label: "Grok 4", description: "xAI" },
+  { value: "gemini-3-flash", label: "Gemini 3 Flash", description: "Fast & cheap" },
+  { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro", description: "Strong reasoning" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Balanced" },
+  { value: "claude-sonnet-4.6", label: "Claude Sonnet 4.6", description: "Capable generalist" },
+  { value: "claude-opus-4.6", label: "Claude Opus 4.6", description: "Highest quality" },
+  { value: "gpt-5.4", label: "GPT-5.4", description: "OpenAI flagship" },
+  { value: "grok-4", label: "Grok 4", description: "xAI" },
 ];
 
 export function FluxPromptGenerator() {
@@ -21,7 +22,7 @@ export function FluxPromptGenerator() {
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [additionalDirections, setAdditionalDirections] = useState("");
-  const [selectedModel, setSelectedModel] = useState("Gemini-3-Flash");
+  const [selectedModel, setSelectedModel] = useState("gemini-3-flash");
   const { toast } = useToast();
 
   const generatePrompt = async () => {
@@ -70,7 +71,7 @@ export function FluxPromptGenerator() {
     setInputText("");
     setGeneratedPrompt("");
     setAdditionalDirections("");
-    setSelectedModel("Gemini-3-Flash");
+    setSelectedModel("gemini-3-flash");
   };
 
   const handleCopyPrompt = async () => {
@@ -203,10 +204,7 @@ export function FluxPromptGenerator() {
             <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-primary/10 rounded-full blur-3xl animate-float"></div>
-            <div
-              className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float"
-              style={{ animationDelay: "2s" }}
-            ></div>
+            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float animation-delay-2000"></div>
             <CardContent className="p-16 relative z-10">
               <div className="text-center space-y-10">
                 <div className="relative inline-block animate-glow-pulse">

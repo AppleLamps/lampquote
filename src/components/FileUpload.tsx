@@ -149,6 +149,8 @@ export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) 
         accept="image/*,.pdf,.doc,.docx,.txt,.md"
         onChange={handleFileSelect}
         className="hidden"
+        aria-label="Attach files"
+        title="Attach files"
       />
 
       {files.length > 0 && (

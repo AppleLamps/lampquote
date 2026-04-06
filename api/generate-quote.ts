@@ -7,14 +7,18 @@ import {
 } from "../lib/poe-server";
 
 const ALLOWED_MODELS = [
-  "Gemini-3-Pro",
-  "Gemini-3-Flash",
-  "Claude-Sonnet-4.6",
-  "Claude-Opus-4.6",
-  "GPT-5.4",
-  "Grok-4",
+  "gemini-3-flash",
+  "gemini-3.1-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-pro",
+  "claude-sonnet-4.6",
+  "claude-opus-4.6",
+  "claude-haiku-4.5",
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "grok-4",
 ];
-const DEFAULT_MODEL = "Gemini-3-Flash";
+const DEFAULT_MODEL = "gemini-3-flash";
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 const MAX_FILES = 10;

@@ -7,13 +7,22 @@ import {
 } from "../lib/poe-server";
 
 const ALLOWED_IMAGE_MODELS = [
-  "GPT-Image-1.5",
-  "Imagen-4",
-  "FLUX-pro-1.1",
-  "DALL-E-3",
-  "FLUX-schnell",
+  "gpt-image-1.5",
+  "imagen-4",
+  "imagen-4-ultra",
+  "nano-banana-2",
+  "nano-banana",
+  "nano-banana-pro",
+  "grok-imagine-image",
+  "flux-pro-1.1",
+  "flux-2-pro",
+  "dall-e-3",
+  "wan-2.7",
+  "seedream-5.0-lite",
+  "seedream-4.5",
+  "flux-schnell",
 ];
-const PROMPT_HELPER_MODEL = process.env.POE_IMAGE_PROMPT_MODEL || "Gemini-3-Pro";
+const PROMPT_HELPER_MODEL = process.env.POE_IMAGE_PROMPT_MODEL || "gemini-3.1-pro";
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 const MAX_FILES = 10;
@@ -56,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const imageModel =
-      model && ALLOWED_IMAGE_MODELS.includes(model) ? model : "GPT-Image-1.5";
+      model && ALLOWED_IMAGE_MODELS.includes(model) ? model : "gpt-image-1.5";
 
     let promptInput = "";
     if (text && text.trim()) {

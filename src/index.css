@@ -119,8 +119,13 @@ All colors MUST be HSL.
 @layer base {
   * {
     @apply border-border;
-    scrollbar-width: thin;
-    scrollbar-color: hsl(45 85% 65% / 0.4) transparent;
+  }
+
+  @supports (scrollbar-width: thin) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: hsl(45 85% 65% / 0.4) transparent;
+    }
   }
 
   *::-webkit-scrollbar {
@@ -145,5 +150,17 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .animation-delay-100 {
+    animation-delay: 0.1s;
+  }
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+  }
+  .animation-delay-2000 {
+    animation-delay: 2s;
   }
 }

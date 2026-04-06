@@ -107,8 +107,8 @@ export function AppSidebar() {
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-pulse flex items-center gap-2 text-muted-foreground">
                       <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce animation-delay-100"></div>
+                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce animation-delay-200"></div>
                     </div>
                   </div>
                 ) : filteredQuotes.length === 0 ? (
