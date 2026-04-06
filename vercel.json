@@ -1,5 +1,6 @@
 {
   "functions": {
+    "api/generate-image-full.ts": { "maxDuration": 300 },
     "api/generate-image.ts": { "maxDuration": 300 },
     "api/generate-image-prompt.ts": { "maxDuration": 60 },
     "api/generate-quote.ts": { "maxDuration": 60 },

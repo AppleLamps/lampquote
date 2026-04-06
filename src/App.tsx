@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
+import { QuotesProvider } from "@/hooks/useQuotes";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -65,11 +66,13 @@ function AppContent() {
 
 const App = () => (
   <TooltipProvider>
-    <Toaster />
-    <Sonner />
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <QuotesProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </QuotesProvider>
   </TooltipProvider>
 );
 

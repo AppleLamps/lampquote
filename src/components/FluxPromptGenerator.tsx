@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,59 @@ const AI_MODELS = [
   { value: "grok-4", label: "Grok 4", description: "xAI" },
 ];
 
+/** Memoized prompt output card */
+const PromptOutput = memo(function PromptOutput({
+  prompt,
+  onCopy,
+}: {
+  prompt: string;
+  onCopy: () => void;
+}) {
+  return (
+    <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
+      <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-primary/10 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float animation-delay-2000"></div>
+      <CardContent className="p-16 relative z-10">
+        <div className="text-center space-y-10">
+          <div className="relative inline-block animate-glow-pulse">
+            <Sparkles className="h-16 w-16 text-transparent bg-gradient-primary bg-clip-text mx-auto" />
+            <div className="absolute inset-0 h-16 w-16 bg-gradient-primary opacity-20 blur-xl mx-auto"></div>
+          </div>
+
+          <div className="text-left max-w-4xl mx-auto">
+            <pre className="text-lg md:text-xl font-mono leading-relaxed text-foreground whitespace-pre-wrap font-inter">
+              {prompt}
+            </pre>
+          </div>
+
+          <div className="flex items-center justify-center">
+            <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent w-64"></div>
+          </div>
+
+          <div className="space-y-8">
+            <p className="text-lg text-muted-foreground/80 font-inter font-light tracking-wide">
+              Generated Flux prompt from your idea
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button
+                variant="luxury"
+                size="lg"
+                onClick={onCopy}
+                className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
+              >
+                <Copy className="h-5 w-5" />
+                Copy Prompt
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export function FluxPromptGenerator() {
   const [inputText, setInputText] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
@@ -24,6 +77,14 @@ export function FluxPromptGenerator() {
   const [additionalDirections, setAdditionalDirections] = useState("");
   const [selectedModel, setSelectedModel] = useState("gemini-3-flash");
   const { toast } = useToast();
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const generatePrompt = async () => {
     if (!inputText.trim()) {
@@ -35,13 +96,21 @@ export function FluxPromptGenerator() {
       return;
     }
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsLoading(true);
     try {
-      const data = await postJson<{ prompt?: string; error?: string }>("/api/generate-flux-prompt", {
-        text: inputText.trim(),
-        directions: additionalDirections.trim() || undefined,
-        model: selectedModel,
-      });
+      const data = await postJson<{ prompt?: string; error?: string }>(
+        "/api/generate-flux-prompt",
+        {
+          text: inputText.trim(),
+          directions: additionalDirections.trim() || undefined,
+          model: selectedModel,
+        },
+        controller.signal
+      );
 
       if (data.error) {
         throw new Error(data.error);
@@ -56,6 +125,7 @@ export function FluxPromptGenerator() {
         description: "Your flux prompt has been created!",
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error generating prompt:", error);
       toast({
         title: "Generation Failed",
@@ -68,13 +138,14 @@ export function FluxPromptGenerator() {
   };
 
   const clearAll = () => {
+    abortRef.current?.abort();
     setInputText("");
     setGeneratedPrompt("");
     setAdditionalDirections("");
     setSelectedModel("gemini-3-flash");
   };
 
-  const handleCopyPrompt = async () => {
+  const handleCopyPrompt = useCallback(async () => {
     if (!generatedPrompt) return;
 
     try {
@@ -91,7 +162,7 @@ export function FluxPromptGenerator() {
         variant: "destructive",
       });
     }
-  };
+  }, [generatedPrompt, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
@@ -199,49 +270,7 @@ export function FluxPromptGenerator() {
           </CardContent>
         </Card>
 
-        {generatedPrompt && (
-          <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
-            <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-primary/10 rounded-full blur-3xl animate-float"></div>
-            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float animation-delay-2000"></div>
-            <CardContent className="p-16 relative z-10">
-              <div className="text-center space-y-10">
-                <div className="relative inline-block animate-glow-pulse">
-                  <Sparkles className="h-16 w-16 text-transparent bg-gradient-primary bg-clip-text mx-auto" />
-                  <div className="absolute inset-0 h-16 w-16 bg-gradient-primary opacity-20 blur-xl mx-auto"></div>
-                </div>
-
-                <div className="text-left max-w-4xl mx-auto">
-                  <pre className="text-lg md:text-xl font-mono leading-relaxed text-foreground whitespace-pre-wrap font-inter">
-                    {generatedPrompt}
-                  </pre>
-                </div>
-
-                <div className="flex items-center justify-center">
-                  <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent w-64"></div>
-                </div>
-
-                <div className="space-y-8">
-                  <p className="text-lg text-muted-foreground/80 font-inter font-light tracking-wide">
-                    Generated Flux prompt from your idea
-                  </p>
-                  <div className="flex gap-4 justify-center">
-                    <Button
-                      variant="luxury"
-                      size="lg"
-                      onClick={handleCopyPrompt}
-                      className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
-                    >
-                      <Copy className="h-5 w-5" />
-                      Copy Prompt
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {generatedPrompt && <PromptOutput prompt={generatedPrompt} onCopy={handleCopyPrompt} />}
       </div>
 
       <footer className="border-t border-glass-border bg-gradient-card/60 backdrop-blur-xl relative">

@@ -1,15 +1,40 @@
-import { poeChatJson, getAssistantText, parseDataUrl, withCorsAndAuth } from "../lib/poe-server";
+import {
+  poeChatJson,
+  getAssistantText,
+  extractImageUrlFromAssistant,
+  parseDataUrl,
+  withCorsAndAuth,
+} from "../lib/poe-server";
 
 const PROMPT_HELPER_MODEL = process.env.POE_IMAGE_PROMPT_MODEL || "gemini-3.1-pro";
+
+const ALLOWED_IMAGE_MODELS = [
+  "gpt-image-1.5",
+  "imagen-4",
+  "imagen-4-ultra",
+  "nano-banana-2",
+  "nano-banana",
+  "nano-banana-pro",
+  "grok-imagine-image",
+  "flux-pro-1.1",
+  "flux-2-pro",
+  "dall-e-3",
+  "wan-2.7",
+  "seedream-5.0-lite",
+  "seedream-4.5",
+  "flux-schnell",
+];
+
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 const MAX_FILES = 10;
 
 export default withCorsAndAuth(async (req, res, apiKey) => {
-  const { text, files, directions } = req.body as {
+  const { text, files, directions, model } = req.body as {
     text?: string;
     files?: Array<{ name: string; type: string; url: string }>;
     directions?: string;
+    model?: string;
   };
 
   if (text && typeof text === "string" && text.length > MAX_TEXT_LENGTH) {
@@ -25,6 +50,9 @@ export default withCorsAndAuth(async (req, res, apiKey) => {
     return void res.status(400).json({ error: "Text or files are required" });
   }
 
+  const imageModel = model && ALLOWED_IMAGE_MODELS.includes(model) ? model : "gpt-image-1.5";
+
+  // ── Step 1: Optimize prompt ──
   let promptInput = "";
   if (text && text.trim()) {
     promptInput = text.trim().substring(0, 2000);
@@ -95,5 +123,26 @@ Output only the final image prompt, nothing else.`,
     throw new Error("Failed to generate optimized prompt");
   }
 
-  return void res.status(200).json({ prompt: optimizedPrompt });
+  // ── Step 2: Generate image ──
+  const imageData = await poeChatJson(apiKey, {
+    model: imageModel,
+    messages: [{ role: "user", content: optimizedPrompt }],
+    max_tokens: 4096,
+  });
+
+  const { imageUrl, text: textResponse, finishReason } = extractImageUrlFromAssistant(imageData!);
+
+  if (!imageUrl) {
+    const errorMsg =
+      finishReason === "safety" || finishReason === "content_filter"
+        ? "The content was flagged by safety filters. Try rephrasing or using more abstract language."
+        : "No image was generated. Try simplifying your input, choosing another image model, or adjusting artistic direction.";
+    return void res.status(422).json({ error: errorMsg });
+  }
+
+  return void res.status(200).json({
+    imageUrl,
+    optimizedPrompt,
+    description: textResponse || "",
+  });
 });

@@ -40,18 +40,20 @@ export async function poeChatJson(
   error?: { message?: string; code?: number };
 } | null> {
   const res = await poeChatCompletion(apiKey, body);
-  const text = await res.text();
+
   let data: ReturnType<typeof JSON.parse> | null = null;
   try {
-    data = JSON.parse(text);
+    data = await res.json();
   } catch {
+    const text = await res.text().catch(() => "");
     throw new Error(`Poe API returned non-JSON (${res.status}): ${text.slice(0, 200)}`);
   }
+
   if (!res.ok) {
     const msg =
       data?.error?.message ||
       (typeof data?.message === "string" ? data.message : null) ||
-      text.slice(0, 300);
+      JSON.stringify(data).slice(0, 300);
     const err = new Error(msg) as Error & { status?: number };
     err.status = res.status;
     throw err;
@@ -136,4 +138,49 @@ export function decodeDataUrlText(dataUrl: string, maxLen: number): string | nul
   } catch {
     return null;
   }
+}
+
+/* ── Shared CORS + method guard for all Vercel serverless routes ── */
+
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+export function setCors(res: VercelResponse) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+/**
+ * Wraps a POST handler with CORS headers, OPTIONS preflight, and method guard.
+ * The inner handler is only called for valid POST requests with a confirmed API key.
+ */
+export function withCorsAndAuth(
+  handler: (req: VercelRequest, res: VercelResponse, apiKey: string) => Promise<void>
+) {
+  return async (req: VercelRequest, res: VercelResponse) => {
+    setCors(res);
+    if (req.method === "OPTIONS") return res.status(204).end();
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+    const apiKey = process.env.POE_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "POE_API_KEY is not configured on the server" });
+    }
+
+    try {
+      await handler(req, res, apiKey);
+    } catch (e: unknown) {
+      const err = e as { status?: number; message?: string };
+      const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
+      const message = e instanceof Error ? e.message : "Internal server error";
+      if (status === 429) {
+        return res.status(429).json({ error: "Rate limit exceeded. Please wait a moment and try again." });
+      }
+      if (status === 402) {
+        return res.status(402).json({ error: "Insufficient Poe points. Check your subscription or add-on points at poe.com." });
+      }
+      console.error("API error:", e);
+      return res.status(status).json({ error: message });
+    }
+  };
 }

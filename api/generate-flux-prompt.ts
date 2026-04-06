@@ -1,5 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { poeChatJson, getAssistantText } from "../lib/poe-server";
+import { poeChatJson, getAssistantText, withCorsAndAuth } from "../lib/poe-server";
 
 const ALLOWED_MODELS = [
   "gemini-3-flash",
@@ -17,43 +16,26 @@ const DEFAULT_MODEL = "gemini-3-flash";
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 
-function setCors(res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
+export default withCorsAndAuth(async (req, res, apiKey) => {
+  const { text, directions, model } = req.body as {
+    text?: string;
+    directions?: string;
+    model?: string;
+  };
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCors(res);
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  const apiKey = process.env.POE_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "POE_API_KEY is not configured on the server" });
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    return void res.status(400).json({ error: "Text content is required" });
+  }
+  if (text.length > MAX_TEXT_LENGTH) {
+    return void res.status(400).json({ error: "Text exceeds maximum length" });
+  }
+  if (directions && typeof directions === "string" && directions.length > MAX_DIRECTIONS_LENGTH) {
+    return void res.status(400).json({ error: "Directions exceed maximum length" });
   }
 
-  try {
-    const { text, directions, model } = req.body as {
-      text?: string;
-      directions?: string;
-      model?: string;
-    };
+  const modelToUse = model && ALLOWED_MODELS.includes(model) ? model : DEFAULT_MODEL;
 
-    if (!text || typeof text !== "string" || text.trim().length === 0) {
-      return res.status(400).json({ error: "Text content is required" });
-    }
-    if (text.length > MAX_TEXT_LENGTH) {
-      return res.status(400).json({ error: "Text exceeds maximum length" });
-    }
-    if (directions && typeof directions === "string" && directions.length > MAX_DIRECTIONS_LENGTH) {
-      return res.status(400).json({ error: "Directions exceed maximum length" });
-    }
-
-    const modelToUse =
-      model && ALLOWED_MODELS.includes(model) ? model : DEFAULT_MODEL;
-
-    let systemContent = `You are an expert prompt engineer for image generation models. Your task is to convert a user's idea into a single, comprehensive, and descriptive narrative prompt.
+  let systemContent = `You are an expert prompt engineer for image generation models. Your task is to convert a user's idea into a single, comprehensive, and descriptive narrative prompt.
 
 MANDATE:
 - You MUST ALWAYS generate a prompt from the user's input.
@@ -73,40 +55,22 @@ GUIDELINES FOR PROMPT CREATION:
 
 Your output should be ONLY the generated prompt text.`;
 
-    if (directions && typeof directions === "string" && directions.trim().length > 0) {
-      systemContent += `\n\nAdditional instructions: ${directions.trim()}`;
-    }
-
-    const messages = [
-      { role: "system" as const, content: systemContent },
-      {
-        role: "user" as const,
-        content: `Idea to convert to Flux prompt: ${text.trim()}`,
-      },
-    ];
-
-    const data = await poeChatJson(apiKey, {
-      model: modelToUse,
-      messages,
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
-
-    const generatedPrompt = getAssistantText(data!).trim();
-    return res.status(200).json({ prompt: generatedPrompt });
-  } catch (e: unknown) {
-    const err = e as { status?: number; message?: string };
-    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
-    const message = e instanceof Error ? e.message : "Failed to generate prompt";
-    if (status === 429) {
-      return res.status(429).json({ error: "Rate limit exceeded. Please try again in a moment." });
-    }
-    if (status === 402) {
-      return res
-        .status(402)
-        .json({ error: "Insufficient Poe points. Check your subscription or add-on points at poe.com." });
-    }
-    console.error("generate-flux-prompt:", e);
-    return res.status(status >= 400 && status < 600 ? status : 500).json({ error: message });
+  if (directions && typeof directions === "string" && directions.trim().length > 0) {
+    systemContent += `\n\nAdditional instructions: ${directions.trim()}`;
   }
-}
+
+  const messages = [
+    { role: "system" as const, content: systemContent },
+    { role: "user" as const, content: `Idea to convert to Flux prompt: ${text.trim()}` },
+  ];
+
+  const data = await poeChatJson(apiKey, {
+    model: modelToUse,
+    messages,
+    temperature: 0.7,
+    max_tokens: 1500,
+  });
+
+  const generatedPrompt = getAssistantText(data!).trim();
+  return void res.status(200).json({ prompt: generatedPrompt });
+});

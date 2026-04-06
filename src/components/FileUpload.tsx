@@ -30,7 +30,8 @@ function readFileAsDataUrl(file: File): Promise<string> {
 const MAX_DIMENSION = 2048;
 const JPEG_QUALITY = 0.8;
 
-/** Compress an image file using the canvas API. Returns a smaller data URL. */
+/** Compress an image file using the canvas API. Returns a smaller data URL.
+ *  Uses toBlob() (async) instead of toDataURL() (sync) to avoid blocking the main thread. */
 function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -50,17 +51,39 @@ function compressImage(file: File): Promise<string> {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      if (!ctx) {
+        img.src = ""; // cancel any pending decode
+        reject(new Error("Canvas not supported"));
+        return;
+      }
       ctx.drawImage(img, 0, 0, width, height);
 
       // Use JPEG for photos (non-transparent); keep PNG for transparency
       const isPng = file.type === "image/png";
       const mimeOut = isPng ? "image/png" : "image/jpeg";
       const quality = isPng ? undefined : JPEG_QUALITY;
-      const dataUrl = canvas.toDataURL(mimeOut, quality);
-      resolve(dataUrl);
+
+      // toBlob is async — avoids blocking the main thread unlike toDataURL
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Blob conversion failed"));
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        },
+        mimeOut,
+        quality
+      );
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to load image")); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      img.src = ""; // cleanup
+      reject(new Error("Failed to load image"));
+    };
     img.src = url;
   });
 }

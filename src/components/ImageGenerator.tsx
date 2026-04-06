@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,19 +27,9 @@ const IMAGE_MODELS = [
   { value: "flux-schnell", label: "FLUX Schnell", description: "Fastest & cheapest" },
 ];
 
-const STEP_MESSAGES = [
-  "Crafting the perfect prompt...",
-  "Generating your image...",
-];
-
-/** Isolated progress indicator — receives the real pipeline step from the parent. */
-const LoadingProgress = memo(function LoadingProgress({ step }: { step: 0 | 1 }) {
+/** Isolated progress indicator — shows indeterminate progress for the single consolidated call. */
+const LoadingProgress = memo(function LoadingProgress() {
   const [progress, setProgress] = useState(0);
-
-  // Reset progress when the step advances
-  useEffect(() => {
-    setProgress(0);
-  }, [step]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -49,7 +39,7 @@ const LoadingProgress = memo(function LoadingProgress({ step }: { step: 0 | 1 })
       });
     }, 300);
     return () => clearInterval(interval);
-  }, [step]);
+  }, []);
 
   return (
     <Card variant="premium" className="relative overflow-hidden mb-12 animate-fade-in-up">
@@ -61,8 +51,8 @@ const LoadingProgress = memo(function LoadingProgress({ step }: { step: 0 | 1 })
               <div className="absolute inset-0 h-8 w-8 bg-primary/20 blur-lg"></div>
             </div>
             <div className="flex-1">
-              <p className="text-lg font-semibold text-foreground font-inter animate-pulse">{STEP_MESSAGES[step]}</p>
-              <p className="text-sm text-muted-foreground font-inter mt-1">Step {step + 1} of 2</p>
+              <p className="text-lg font-semibold text-foreground font-inter animate-pulse">Crafting your image...</p>
+              <p className="text-sm text-muted-foreground font-inter mt-1">Optimizing prompt & generating</p>
             </div>
           </div>
           <Progress value={progress} className="h-2" />
@@ -75,16 +65,75 @@ const LoadingProgress = memo(function LoadingProgress({ step }: { step: 0 | 1 })
   );
 });
 
+/** Memoized image result card */
+const ImageResult = memo(function ImageResult({
+  imageUrl,
+  description,
+  onDownload,
+}: {
+  imageUrl: string;
+  description: string;
+  onDownload: () => void;
+}) {
+  return (
+    <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
+      <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
+      <CardContent className="p-10 relative z-10">
+        <div className="text-center space-y-8">
+          <div className="relative inline-block animate-glow-pulse">
+            <ImageIcon className="h-12 w-12 text-transparent bg-gradient-primary bg-clip-text mx-auto" />
+            <div className="absolute inset-0 h-12 w-12 bg-gradient-primary opacity-20 blur-xl mx-auto"></div>
+          </div>
+
+          <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-floating">
+            <img src={imageUrl} alt={description || "AI generated image"} className="w-full h-auto" />
+          </div>
+
+          {description && (
+            <p className="text-base text-muted-foreground/80 font-inter font-light tracking-wide max-w-2xl mx-auto">
+              {description}
+            </p>
+          )}
+
+          <div className="flex items-center justify-center">
+            <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent w-64"></div>
+          </div>
+
+          <div className="flex gap-4 justify-center">
+            <Button
+              variant="luxury"
+              size="lg"
+              onClick={onDownload}
+              className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
+            >
+              <Download className="h-5 w-5" />
+              Download Image
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export function ImageGenerator() {
   const [inputText, setInputText] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
   const [imageDescription, setImageDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState<0 | 1>(0);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [additionalDirections, setAdditionalDirections] = useState("");
   const [selectedModel, setSelectedModel] = useState("gpt-image-1.5");
   const { toast } = useToast();
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const generateImage = async () => {
     if (!inputText.trim() && attachedFiles.length === 0) {
@@ -96,45 +145,42 @@ export function ImageGenerator() {
       return;
     }
 
+    // Abort any previous in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsLoading(true);
-    setLoadingStep(0);
 
     try {
-      // Step 1: Optimize prompt
-      const promptData = await postJson<{ prompt?: string; error?: string }>(
-        "/api/generate-image-prompt",
+      // Single consolidated call — prompt optimization + image generation in one serverless function
+      const data = await postJson<{
+        imageUrl?: string;
+        optimizedPrompt?: string;
+        description?: string;
+        error?: string;
+      }>(
+        "/api/generate-image-full",
         {
           text: inputText.trim(),
           files: attachedFiles.length > 0 ? attachedFiles : undefined,
           directions: additionalDirections.trim() || undefined,
-        }
+          model: selectedModel,
+        },
+        controller.signal
       );
 
-      if (promptData.error) throw new Error(promptData.error);
-      if (!promptData.prompt) throw new Error("No prompt in response");
+      if (data.error) throw new Error(data.error);
+      if (!data.imageUrl) throw new Error("No image in response");
 
-      // Step 2: Generate image from optimized prompt
-      setLoadingStep(1);
-
-      const imageData = await postJson<{
-        imageUrl?: string;
-        description?: string;
-        error?: string;
-      }>("/api/generate-image", {
-        prompt: promptData.prompt,
-        model: selectedModel,
-      });
-
-      if (imageData.error) throw new Error(imageData.error);
-      if (!imageData.imageUrl) throw new Error("No image in response");
-
-      setGeneratedImage(imageData.imageUrl);
-      setImageDescription(imageData.description || "");
+      setGeneratedImage(data.imageUrl);
+      setImageDescription(data.description || "");
       toast({
         title: "Image Generated",
         description: "Your visual representation has been created!",
       });
     } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error generating image:", error);
       toast({
         title: "Generation Failed",
@@ -147,6 +193,7 @@ export function ImageGenerator() {
   };
 
   const clearAll = () => {
+    abortRef.current?.abort();
     setInputText("");
     setGeneratedImage("");
     setImageDescription("");
@@ -158,8 +205,6 @@ export function ImageGenerator() {
   const handleDownload = async () => {
     if (!generatedImage) return;
 
-    // data: URLs download directly; for cross-origin hosted URLs the browser
-    // ignores the `download` attribute, so we fetch the bytes first.
     try {
       let objectUrl = generatedImage;
       let shouldRevoke = false;
@@ -184,7 +229,6 @@ export function ImageGenerator() {
 
       toast({ title: "Image Downloaded", description: "The image has been saved to your device." });
     } catch {
-      // CORS block or network error — fall back to opening in a new tab
       window.open(generatedImage, "_blank", "noopener");
       toast({
         title: "Download blocked",
@@ -283,47 +327,10 @@ export function ImageGenerator() {
           </CardContent>
         </Card>
 
-        {isLoading && <LoadingProgress step={loadingStep} />}
+        {isLoading && <LoadingProgress />}
 
         {generatedImage && !isLoading && (
-          <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
-            <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
-            <CardContent className="p-10 relative z-10">
-              <div className="text-center space-y-8">
-                <div className="relative inline-block animate-glow-pulse">
-                  <ImageIcon className="h-12 w-12 text-transparent bg-gradient-primary bg-clip-text mx-auto" />
-                  <div className="absolute inset-0 h-12 w-12 bg-gradient-primary opacity-20 blur-xl mx-auto"></div>
-                </div>
-
-                <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-floating">
-                  <img src={generatedImage} alt={imageDescription || "AI generated image"} className="w-full h-auto" />
-                </div>
-
-                {imageDescription && (
-                  <p className="text-base text-muted-foreground/80 font-inter font-light tracking-wide max-w-2xl mx-auto">
-                    {imageDescription}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-center">
-                  <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent w-64"></div>
-                </div>
-
-                <div className="flex gap-4 justify-center">
-                  <Button
-                    variant="luxury"
-                    size="lg"
-                    onClick={handleDownload}
-                    className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
-                  >
-                    <Download className="h-5 w-5" />
-                    Download Image
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ImageResult imageUrl={generatedImage} description={imageDescription} onDownload={handleDownload} />
         )}
       </div>
 

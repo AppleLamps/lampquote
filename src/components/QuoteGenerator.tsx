@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +38,69 @@ function sanitizeQuote(text: string) {
   return trimmed;
 }
 
+/** Memoized quote output card — only re-renders when the quote text changes */
+const QuoteOutput = memo(function QuoteOutput({
+  quote,
+  onCopy,
+  onSave,
+}: {
+  quote: string;
+  onCopy: () => void;
+  onSave: () => void;
+}) {
+  const cleaned = sanitizeQuote(quote);
+  return (
+    <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
+      <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-primary/10 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float animation-delay-2000"></div>
+      <CardContent className="p-16 relative z-10">
+        <div className="text-center space-y-10">
+          <div className="relative inline-block animate-glow-pulse">
+            <Quote className="h-16 w-16 text-transparent bg-gradient-primary bg-clip-text mx-auto" />
+            <div className="absolute inset-0 h-16 w-16 bg-gradient-primary opacity-20 blur-xl mx-auto"></div>
+          </div>
+
+          <blockquote className="text-3xl md:text-4xl font-playfair font-medium leading-relaxed text-foreground italic max-w-4xl mx-auto tracking-wide">
+            "{cleaned}"
+          </blockquote>
+
+          <div className="flex items-center justify-center">
+            <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent w-64"></div>
+          </div>
+
+          <div className="space-y-8">
+            <p className="text-lg text-muted-foreground/80 font-inter font-light tracking-wide">
+              Generated reflection from your content (via Poe API)
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button
+                variant="luxury"
+                size="lg"
+                onClick={onCopy}
+                className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
+              >
+                <Copy className="h-5 w-5" />
+                Copy Quote
+              </Button>
+              <Button
+                variant="luxury"
+                size="lg"
+                onClick={onSave}
+                className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
+              >
+                <Save className="h-5 w-5" />
+                Save Quote
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
 export function QuoteGenerator() {
   const [inputText, setInputText] = useState("");
   const [generatedQuote, setGeneratedQuote] = useState("");
@@ -47,6 +110,14 @@ export function QuoteGenerator() {
   const [selectedModel, setSelectedModel] = useState("gemini-3-flash");
   const { toast } = useToast();
   const { saveQuote } = useQuotes();
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const generateQuote = async () => {
     if (!inputText.trim() && attachedFiles.length === 0) {
@@ -58,14 +129,22 @@ export function QuoteGenerator() {
       return;
     }
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsLoading(true);
     try {
-      const data = await postJson<{ quote?: string; error?: string }>("/api/generate-quote", {
-        text: inputText.trim(),
-        files: attachedFiles,
-        directions: additionalDirections.trim() || undefined,
-        model: selectedModel,
-      });
+      const data = await postJson<{ quote?: string; error?: string }>(
+        "/api/generate-quote",
+        {
+          text: inputText.trim(),
+          files: attachedFiles,
+          directions: additionalDirections.trim() || undefined,
+          model: selectedModel,
+        },
+        controller.signal
+      );
 
       if (data.error) {
         throw new Error(data.error);
@@ -80,6 +159,7 @@ export function QuoteGenerator() {
         description: "Your profound reflection has been created!",
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error generating quote:", error);
       toast({
         title: "Generation Failed",
@@ -92,6 +172,7 @@ export function QuoteGenerator() {
   };
 
   const clearAll = () => {
+    abortRef.current?.abort();
     setInputText("");
     setGeneratedQuote("");
     setAttachedFiles([]);
@@ -99,12 +180,12 @@ export function QuoteGenerator() {
     setSelectedModel("gemini-3-flash");
   };
 
-  const handleSaveQuote = async () => {
+  const handleSaveQuote = useCallback(async () => {
     if (!generatedQuote) return;
     await saveQuote(generatedQuote);
-  };
+  }, [generatedQuote, saveQuote]);
 
-  const handleCopyQuote = async () => {
+  const handleCopyQuote = useCallback(async () => {
     if (!generatedQuote) return;
 
     try {
@@ -121,7 +202,7 @@ export function QuoteGenerator() {
         variant: "destructive",
       });
     }
-  };
+  }, [generatedQuote, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
@@ -214,54 +295,7 @@ export function QuoteGenerator() {
         </Card>
 
         {generatedQuote && (
-          <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
-            <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-primary/10 rounded-full blur-3xl animate-float"></div>
-            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float animation-delay-2000"></div>
-            <CardContent className="p-16 relative z-10">
-              <div className="text-center space-y-10">
-                <div className="relative inline-block animate-glow-pulse">
-                  <Quote className="h-16 w-16 text-transparent bg-gradient-primary bg-clip-text mx-auto" />
-                  <div className="absolute inset-0 h-16 w-16 bg-gradient-primary opacity-20 blur-xl mx-auto"></div>
-                </div>
-
-                <blockquote className="text-3xl md:text-4xl font-playfair font-medium leading-relaxed text-foreground italic max-w-4xl mx-auto tracking-wide">
-                  "{sanitizeQuote(generatedQuote)}"
-                </blockquote>
-
-                <div className="flex items-center justify-center">
-                  <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent w-64"></div>
-                </div>
-
-                <div className="space-y-8">
-                  <p className="text-lg text-muted-foreground/80 font-inter font-light tracking-wide">
-                    Generated reflection from your content (via Poe API)
-                  </p>
-                  <div className="flex gap-4 justify-center">
-                    <Button
-                      variant="luxury"
-                      size="lg"
-                      onClick={handleCopyQuote}
-                      className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
-                    >
-                      <Copy className="h-5 w-5" />
-                      Copy Quote
-                    </Button>
-                    <Button
-                      variant="luxury"
-                      size="lg"
-                      onClick={handleSaveQuote}
-                      className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
-                    >
-                      <Save className="h-5 w-5" />
-                      Save Quote
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <QuoteOutput quote={generatedQuote} onCopy={handleCopyQuote} onSave={handleSaveQuote} />
         )}
       </div>
 
