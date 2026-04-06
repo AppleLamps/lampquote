@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -154,6 +154,17 @@ export function GrokImaginePromptGenerator() {
     }
   }, [generatedPrompt, toast]);
 
+  const modelOptions = useMemo(
+    () =>
+      POE_TEXT_MODEL_OPTIONS.map((m) => (
+        <SelectItem key={m.value} value={m.value}>
+          <span className="font-medium">{m.label}</span>
+          <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
+        </SelectItem>
+      )),
+    []
+  );
+
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
       <div className="flex-1 container mx-auto px-4 py-12 max-w-5xl">
@@ -219,12 +230,7 @@ export function GrokImaginePromptGenerator() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {POE_TEXT_MODEL_OPTIONS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        <span className="font-medium">{m.label}</span>
-                        <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
-                      </SelectItem>
-                    ))}
+                    {modelOptions}
                   </SelectContent>
                 </Select>
               </div>

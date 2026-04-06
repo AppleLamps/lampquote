@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -202,7 +202,7 @@ export function ImageGenerator() {
     setSelectedModel("gpt-image-1.5");
   };
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!generatedImage) return;
 
     try {
@@ -235,7 +235,18 @@ export function ImageGenerator() {
         description: "Opened the image in a new tab — right-click it and choose 'Save image as…'",
       });
     }
-  };
+  }, [generatedImage, toast]);
+
+  const modelOptions = useMemo(
+    () =>
+      IMAGE_MODELS.map((m) => (
+        <SelectItem key={m.value} value={m.value}>
+          <span className="font-medium">{m.label}</span>
+          <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
+        </SelectItem>
+      )),
+    []
+  );
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
@@ -286,12 +297,7 @@ export function ImageGenerator() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {IMAGE_MODELS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        <span className="font-medium">{m.label}</span>
-                        <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
-                      </SelectItem>
-                    ))}
+                    {modelOptions}
                   </SelectContent>
                 </Select>
               </div>

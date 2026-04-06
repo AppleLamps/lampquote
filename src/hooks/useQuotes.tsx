@@ -53,17 +53,23 @@ function invalidateCache() {
   quotesCache = null;
 }
 
-/* ── Context-based shared state ── */
+/* ── Context-based shared state (split to avoid unnecessary rerenders) ── */
 
-interface QuotesContextValue {
+interface QuotesDataValue {
   quotes: Quote[];
   loading: boolean;
+}
+
+interface QuotesActionsValue {
   saveQuote: (content: string) => Promise<void>;
   deleteQuote: (quoteId: string) => Promise<void>;
   refetch: () => void;
 }
 
-const QuotesContext = createContext<QuotesContextValue | null>(null);
+type QuotesContextValue = QuotesDataValue & QuotesActionsValue;
+
+const QuotesDataContext = createContext<QuotesDataValue | null>(null);
+const QuotesActionsContext = createContext<QuotesActionsValue | null>(null);
 
 export function QuotesProvider({ children }: { children: ReactNode }) {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -141,18 +147,39 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     [toast]
   );
 
-  const value = useMemo<QuotesContextValue>(
-    () => ({ quotes, loading, saveQuote, deleteQuote, refetch: syncFromStorage }),
-    [quotes, loading, saveQuote, deleteQuote, syncFromStorage]
+  const data = useMemo<QuotesDataValue>(
+    () => ({ quotes, loading }),
+    [quotes, loading]
   );
 
-  return <QuotesContext.Provider value={value}>{children}</QuotesContext.Provider>;
+  const actions = useMemo<QuotesActionsValue>(
+    () => ({ saveQuote, deleteQuote, refetch: syncFromStorage }),
+    [saveQuote, deleteQuote, syncFromStorage]
+  );
+
+  return (
+    <QuotesDataContext.Provider value={data}>
+      <QuotesActionsContext.Provider value={actions}>
+        {children}
+      </QuotesActionsContext.Provider>
+    </QuotesDataContext.Provider>
+  );
 }
 
 export function useQuotes(): QuotesContextValue {
-  const ctx = useContext(QuotesContext);
-  if (!ctx) {
+  const data = useContext(QuotesDataContext);
+  const actions = useContext(QuotesActionsContext);
+  if (!data || !actions) {
     throw new Error("useQuotes must be used within a <QuotesProvider>");
+  }
+  return useMemo(() => ({ ...data, ...actions }), [data, actions]);
+}
+
+/** Actions only — stable reference, does NOT rerender when quotes change. */
+export function useQuotesActions(): QuotesActionsValue {
+  const ctx = useContext(QuotesActionsContext);
+  if (!ctx) {
+    throw new Error("useQuotesActions must be used within a <QuotesProvider>");
   }
   return ctx;
 }

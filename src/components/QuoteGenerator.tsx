@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { postJson } from "@/lib/api";
 import { Loader2, Sparkles, Quote, Save, Copy } from "lucide-react";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesActions } from "@/hooks/useQuotes";
 import { FileUpload, UploadedFile } from "@/components/FileUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { POE_TEXT_MODEL_OPTIONS } from "../../lib/poe-text-models";
@@ -100,7 +100,7 @@ export function QuoteGenerator() {
   const [additionalDirections, setAdditionalDirections] = useState("");
   const [selectedModel, setSelectedModel] = useState("gemini-3-flash");
   const { toast } = useToast();
-  const { saveQuote } = useQuotes();
+  const { saveQuote } = useQuotesActions();
   const abortRef = useRef<AbortController | null>(null);
 
   // Abort in-flight requests on unmount
@@ -195,6 +195,17 @@ export function QuoteGenerator() {
     }
   }, [generatedQuote, toast]);
 
+  const modelOptions = useMemo(
+    () =>
+      POE_TEXT_MODEL_OPTIONS.map((m) => (
+        <SelectItem key={m.value} value={m.value}>
+          <span className="font-medium">{m.label}</span>
+          <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
+        </SelectItem>
+      )),
+    []
+  );
+
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
       <div className="flex-1 container mx-auto px-4 py-12 max-w-5xl">
@@ -244,12 +255,7 @@ export function QuoteGenerator() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {POE_TEXT_MODEL_OPTIONS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        <span className="font-medium">{m.label}</span>
-                        <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
-                      </SelectItem>
-                    ))}
+                    {modelOptions}
                   </SelectContent>
                 </Select>
               </div>
