@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Off-white theme with golden hints */
+    --background: 48 12% 96%;
+    --foreground: 30 10% 20%;
+
+    --card: 48 8% 98%;
+    --card-foreground: 30 10% 20%;
+
+    --popover: 48 8% 98%;
+    --popover-foreground: 30 10% 20%;
+
+    --primary: 45 93% 47%;
+    --primary-foreground: 48 15% 95%;
+
+    --secondary: 45 25% 88%;
+    --secondary-foreground: 30 10% 20%;
+
+    --muted: 45 15% 90%;
+    --muted-foreground: 30 8% 40%;
+
+    --accent: 48 30% 85%;
+    --accent-foreground: 30 10% 20%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 48 15% 95%;
+
+    --border: 45 20% 82%;
+    --input: 45 15% 88%;
+    --ring: 45 93% 47%;
+
+    /* Glass and golden design tokens - fixed opacity values */
+    --gradient-primary: linear-gradient(135deg, hsl(45 93% 47% / 0.9), hsl(48 85% 55% / 0.8));
+    --gradient-secondary: linear-gradient(135deg, hsl(48 25% 95%), hsl(45 20% 92%));
+    --gradient-subtle: linear-gradient(180deg, hsl(48 12% 96%), hsl(48 8% 98%));
+    --gradient-card: linear-gradient(145deg, hsl(48 8% 98% / 0.95), hsl(45 15% 94% / 0.9));
+    --gradient-accent: linear-gradient(90deg, hsl(45 93% 47% / 0.1), hsl(48 85% 55% / 0.1));
+    
+    /* Glass effects with better opacity */
+    --glass-background: hsl(48 8% 98% / 0.85);
+    --glass-border: hsl(45 85% 65% / 0.4);
+    --glass-hover: hsl(45 93% 47% / 0.15);
+    
+    /* Floating shadows with golden glow */
+    --shadow-elegant: 0 20px 60px -15px 45deg 93% 47% / 0.4;
+    --shadow-glow: 0 0 80px 45deg 85% 55% / 0.3;
+    --shadow-luxury: 0 8px 32px 240deg 10% 15% / 0.1, 0 2px 8px 45deg 93% 47% / 0.2;
+    --shadow-premium: inset 0 1px 0 48deg 8% 98% / 0.8, 0 1px 3px 240deg 10% 15% / 0.1;
+    --shadow-floating: 0 25px 50px -12px 45deg 93% 47% / 0.25, 0 0 0 1px 45deg 85% 65% / 0.05;
+    
+    --border-luxury: 1px solid 45deg 85% 65% / 0.3;
+    --border-glass: 1px solid 48deg 8% 98% / 0.2;
+    
+    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-luxury: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    --transition-float: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 0.75rem;
+
+    /* Typography tokens */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    --font-size-5xl: 3rem;
+    --font-size-6xl: 3.75rem;
+    --font-size-7xl: 4.5rem;
+
+    /* Spacing tokens */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    --spacing-3xl: 4rem;
+
+    /* Enhanced glass effects */
+    --glass-surface: hsl(48 8% 98% / 0.6);
+    --glass-surface-hover: hsl(48 8% 98% / 0.8);
+    --glass-border-light: hsl(45 85% 65% / 0.2);
+    --glass-border-strong: hsl(45 85% 65% / 0.5);
+    
+    /* Premium shadows */
+    --shadow-soft: 0 2px 8px hsl(240 10% 15% / 0.04);
+    --shadow-medium: 0 4px 16px hsl(240 10% 15% / 0.06);
+    --shadow-large: 0 8px 32px hsl(240 10% 15% / 0.08);
+    --shadow-xl: 0 16px 64px hsl(240 10% 15% / 0.1);
+    
+    /* Animation tokens */
+    --ease-in-out-back: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+
+    /* Sidebar colors for off-white theme */
+    --sidebar-background: 48 8% 98%;
+    --sidebar-foreground: 240 10% 15%;
+    --sidebar-primary: 45 93% 47%;
+    --sidebar-primary-foreground: 48 8% 98%;
+    --sidebar-accent: 45 20% 92%;
+    --sidebar-accent-foreground: 240 10% 15%;
+    --sidebar-border: 45 15% 88%;
+    --sidebar-ring: 45 93% 47%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(45 85% 65% / 0.4) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(45 85% 65% / 0.4);
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(45 93% 47% / 0.6);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
