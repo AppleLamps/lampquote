@@ -1,6 +1,6 @@
-import { poeChatJson, getAssistantText, withCorsAndAuth } from "../lib/poe-server";
-import { DEFAULT_QUOTE_TEXT_MODEL, resolveAllowedTextModel } from "../lib/poe-text-models";
-import { GROK_IMAGINE_SYSTEM_PROMPT } from "../lib/grok-imagine-system-prompt";
+import { poeChatJson, getAssistantText, withCorsAndAuth } from "../lib/poe-server.js";
+import { DEFAULT_QUOTE_TEXT_MODEL, resolveAllowedTextModel } from "../lib/poe-text-models.js";
+import { GROK_IMAGINE_SYSTEM_PROMPT } from "../lib/grok-imagine-system-prompt.js";
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 

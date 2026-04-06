@@ -4,8 +4,8 @@ import {
   getAssistantText,
   withCorsAndAuth,
   type ChatMessage,
-} from "../lib/poe-server";
-import { DEFAULT_QUOTE_TEXT_MODEL, resolveAllowedTextModel } from "../lib/poe-text-models";
+} from "../lib/poe-server.js";
+import { DEFAULT_QUOTE_TEXT_MODEL, resolveAllowedTextModel } from "../lib/poe-text-models.js";
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 const MAX_FILES = 10;

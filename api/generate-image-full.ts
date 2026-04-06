@@ -4,11 +4,11 @@ import {
   extractImageUrlFromAssistant,
   parseDataUrl,
   withCorsAndAuth,
-} from "../lib/poe-server";
+} from "../lib/poe-server.js";
 import {
   DEFAULT_IMAGE_PROMPT_HELPER_MODEL,
   resolveAllowedTextModel,
-} from "../lib/poe-text-models";
+} from "../lib/poe-text-models.js";
 
 const PROMPT_HELPER_MODEL = resolveAllowedTextModel(
   process.env.POE_IMAGE_PROMPT_MODEL,

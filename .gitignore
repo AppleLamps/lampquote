@@ -30,3 +30,5 @@ poe-api-docs/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

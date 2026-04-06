@@ -1,4 +1,4 @@
-import { poeChatJson, extractImageUrlFromAssistant, withCorsAndAuth } from "../lib/poe-server";
+import { poeChatJson, extractImageUrlFromAssistant, withCorsAndAuth } from "../lib/poe-server.js";
 
 const ALLOWED_IMAGE_MODELS = [
   "gpt-image-1.5",
