@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { QuotesProvider } from "@/hooks/useQuotes";
@@ -10,7 +10,7 @@ import { QuotesProvider } from "@/hooks/useQuotes";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const Index = lazy(() => import("./pages/Index"));
-const FluxPrompt = lazy(() => import("./pages/FluxPrompt"));
+const GrokImaginePrompt = lazy(() => import("./pages/GrokImaginePrompt"));
 const ImageGen = lazy(() => import("./pages/ImageGen"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -52,7 +52,8 @@ function AppContent() {
             <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted-foreground">Loading…</div></div>}>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/flux" element={<FluxPrompt />} />
+                <Route path="/grok-imagine" element={<GrokImaginePrompt />} />
+                <Route path="/flux" element={<Navigate to="/grok-imagine" replace />} />
                 <Route path="/image" element={<ImageGen />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

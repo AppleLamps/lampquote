@@ -1,6 +1,13 @@
 import { poeChatJson, getAssistantText, parseDataUrl, withCorsAndAuth } from "../lib/poe-server";
+import {
+  DEFAULT_IMAGE_PROMPT_HELPER_MODEL,
+  resolveAllowedTextModel,
+} from "../lib/poe-text-models";
 
-const PROMPT_HELPER_MODEL = process.env.POE_IMAGE_PROMPT_MODEL || "gemini-3.1-pro";
+const PROMPT_HELPER_MODEL = resolveAllowedTextModel(
+  process.env.POE_IMAGE_PROMPT_MODEL,
+  DEFAULT_IMAGE_PROMPT_HELPER_MODEL
+);
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 const MAX_FILES = 10;

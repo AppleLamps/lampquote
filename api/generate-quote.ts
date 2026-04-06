@@ -5,20 +5,7 @@ import {
   withCorsAndAuth,
   type ChatMessage,
 } from "../lib/poe-server";
-
-const ALLOWED_MODELS = [
-  "gemini-3-flash",
-  "gemini-3.1-pro",
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-  "claude-sonnet-4.6",
-  "claude-opus-4.6",
-  "claude-haiku-4.5",
-  "gpt-5.4",
-  "gpt-5.4-mini",
-  "grok-4",
-];
-const DEFAULT_MODEL = "gemini-3-flash";
+import { DEFAULT_QUOTE_TEXT_MODEL, resolveAllowedTextModel } from "../lib/poe-text-models";
 const MAX_TEXT_LENGTH = 50000;
 const MAX_DIRECTIONS_LENGTH = 5000;
 const MAX_FILES = 10;
@@ -44,7 +31,7 @@ export default withCorsAndAuth(async (req, res, apiKey) => {
     return void res.status(400).json({ error: "Text or files are required" });
   }
 
-  const modelToUse = model && ALLOWED_MODELS.includes(model) ? model : DEFAULT_MODEL;
+  const modelToUse = resolveAllowedTextModel(model, DEFAULT_QUOTE_TEXT_MODEL);
 
   const userContent: Array<Record<string, unknown>> = [];
 

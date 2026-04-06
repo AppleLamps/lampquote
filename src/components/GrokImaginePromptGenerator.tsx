@@ -6,16 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { postJson } from "@/lib/api";
 import { Loader2, Sparkles, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const AI_MODELS = [
-  { value: "gemini-3-flash", label: "Gemini 3 Flash", description: "Fast & cheap" },
-  { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro", description: "Strong reasoning" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Balanced" },
-  { value: "claude-sonnet-4.6", label: "Claude Sonnet 4.6", description: "Capable generalist" },
-  { value: "claude-opus-4.6", label: "Claude Opus 4.6", description: "Highest quality" },
-  { value: "gpt-5.4", label: "GPT-5.4", description: "OpenAI flagship" },
-  { value: "grok-4", label: "Grok 4", description: "xAI" },
-];
+import { POE_TEXT_MODEL_OPTIONS } from "../../lib/poe-text-models";
 
 /** Memoized prompt output card */
 const PromptOutput = memo(function PromptOutput({
@@ -50,7 +41,7 @@ const PromptOutput = memo(function PromptOutput({
 
           <div className="space-y-8">
             <p className="text-lg text-muted-foreground/80 font-inter font-light tracking-wide">
-              Generated Flux prompt from your idea
+              Grok Imagine pack — prompt, mode, and aspect ratio
             </p>
             <div className="flex gap-4 justify-center">
               <Button
@@ -60,7 +51,7 @@ const PromptOutput = memo(function PromptOutput({
                 className="font-inter transition-all duration-300 hover:scale-105 hover:shadow-floating"
               >
                 <Copy className="h-5 w-5" />
-                Copy Prompt
+                Copy output
               </Button>
             </div>
           </div>
@@ -70,7 +61,7 @@ const PromptOutput = memo(function PromptOutput({
   );
 });
 
-export function FluxPromptGenerator() {
+export function GrokImaginePromptGenerator() {
   const [inputText, setInputText] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +70,6 @@ export function FluxPromptGenerator() {
   const { toast } = useToast();
   const abortRef = useRef<AbortController | null>(null);
 
-  // Abort in-flight requests on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -89,8 +79,8 @@ export function FluxPromptGenerator() {
   const generatePrompt = async () => {
     if (!inputText.trim()) {
       toast({
-        title: "Input Required",
-        description: "Please enter your idea to generate a flux prompt.",
+        title: "Input required",
+        description: "Enter an idea or editing request for Grok Imagine.",
         variant: "destructive",
       });
       return;
@@ -121,14 +111,14 @@ export function FluxPromptGenerator() {
 
       setGeneratedPrompt(data.prompt);
       toast({
-        title: "Prompt Generated",
-        description: "Your flux prompt has been created!",
+        title: "Pack generated",
+        description: "Your Grok Imagine prompt pack is ready.",
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("Error generating prompt:", error);
       toast({
-        title: "Generation Failed",
+        title: "Generation failed",
         description: error instanceof Error ? error.message : "Failed to generate prompt. Please try again.",
         variant: "destructive",
       });
@@ -151,14 +141,14 @@ export function FluxPromptGenerator() {
     try {
       await navigator.clipboard.writeText(generatedPrompt);
       toast({
-        title: "Prompt Copied",
-        description: "The prompt has been copied to your clipboard.",
+        title: "Copied",
+        description: "Output copied to clipboard.",
       });
     } catch (error) {
       console.error("Error copying prompt:", error);
       toast({
-        title: "Copy Failed",
-        description: "Failed to copy prompt. Please try again.",
+        title: "Copy failed",
+        description: "Could not copy. Try again.",
         variant: "destructive",
       });
     }
@@ -173,16 +163,16 @@ export function FluxPromptGenerator() {
               <Sparkles className="h-12 w-12 text-transparent bg-gradient-primary bg-clip-text" />
               <div className="absolute inset-0 h-12 w-12 bg-gradient-primary opacity-30 blur-xl animate-glow-pulse"></div>
             </div>
-            <h1 className="text-6xl md:text-8xl font-playfair font-bold bg-gradient-primary bg-clip-text text-transparent tracking-tight leading-none">
-              Flux Prompt
+            <h1 className="text-5xl md:text-7xl font-playfair font-bold bg-gradient-primary bg-clip-text text-transparent tracking-tight leading-none">
+              Grok Imagine Prompt
             </h1>
           </div>
           <div className="space-y-6">
             <p className="text-2xl md:text-3xl text-foreground/90 max-w-4xl mx-auto leading-relaxed font-inter font-light tracking-wide">
-              Transform your ideas into perfect image prompts
+              Production-ready prompts for xAI Grok Imagine — mode, ratio, and copy-paste block
             </p>
             <p className="text-xl text-muted-foreground/80 max-w-3xl mx-auto leading-relaxed font-inter font-light">
-              Describe your concept and generate detailed prompts for image generation (Poe API)
+              Describe your idea or edit; get layered subject, lighting, camera, and finishing detail (via Poe)
             </p>
           </div>
         </div>
@@ -193,12 +183,12 @@ export function FluxPromptGenerator() {
             <div className="space-y-8">
               <div className="space-y-4">
                 <label htmlFor="input-text" className="text-lg font-semibold text-foreground font-inter tracking-wide">
-                  Describe your idea
+                  Idea or editing request
                 </label>
                 <Textarea
                   id="input-text"
                   variant="glass"
-                  placeholder="Describe the concept, scene, or image you want to generate with Flux..."
+                  placeholder="Scene, subject, style goal, or what to change on a reference image…"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   className="min-h-[200px] text-base leading-relaxed font-inter"
@@ -208,13 +198,13 @@ export function FluxPromptGenerator() {
 
               <div className="space-y-4">
                 <label htmlFor="additional-directions" className="text-lg font-semibold text-foreground font-inter tracking-wide">
-                  Additional directions
+                  Extra directions
                   <span className="text-sm font-normal text-muted-foreground ml-2">(optional)</span>
                 </label>
                 <Textarea
                   id="additional-directions"
                   variant="glass"
-                  placeholder="Provide specific instructions for the prompt (e.g., 'Make it photorealistic', 'Focus on lighting', 'Use a cinematic style')..."
+                  placeholder="Aspect ratio preference, must-include details, negatives, reference strategy…"
                   value={additionalDirections}
                   onChange={(e) => setAdditionalDirections(e.target.value)}
                   className="min-h-[100px] text-base leading-relaxed font-inter"
@@ -229,7 +219,7 @@ export function FluxPromptGenerator() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {AI_MODELS.map((m) => (
+                    {POE_TEXT_MODEL_OPTIONS.map((m) => (
                       <SelectItem key={m.value} value={m.value}>
                         <span className="font-medium">{m.label}</span>
                         <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>
@@ -255,14 +245,14 @@ export function FluxPromptGenerator() {
                   ) : (
                     <>
                       <Sparkles className="h-5 w-5" />
-                      Generate Prompt
+                      Generate pack
                     </>
                   )}
                 </Button>
 
                 {(inputText || generatedPrompt || additionalDirections) && (
                   <Button variant="luxury" size="lg" onClick={clearAll} disabled={isLoading} className="h-12 font-inter">
-                    Clear All
+                    Clear all
                   </Button>
                 )}
               </div>
@@ -281,7 +271,7 @@ export function FluxPromptGenerator() {
               <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent w-32"></div>
             </div>
             <p className="text-base text-muted-foreground/80 font-inter font-light tracking-wide">
-              Powered by Poe • Create prompts for Flux and other image models
+              Powered by Poe • Outputs tuned for Grok Imagine (Speed / Quality, aspect ratio, references)
             </p>
           </div>
         </div>

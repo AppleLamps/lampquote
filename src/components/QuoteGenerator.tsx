@@ -8,16 +8,7 @@ import { Loader2, Sparkles, Quote, Save, Copy } from "lucide-react";
 import { useQuotes } from "@/hooks/useQuotes";
 import { FileUpload, UploadedFile } from "@/components/FileUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const AI_MODELS = [
-  { value: "gemini-3-flash", label: "Gemini 3 Flash", description: "Fast & cheap" },
-  { value: "gemini-3.1-pro", label: "Gemini 3.1 Pro", description: "Strong reasoning" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Balanced" },
-  { value: "claude-sonnet-4.6", label: "Claude Sonnet 4.6", description: "Capable generalist" },
-  { value: "claude-opus-4.6", label: "Claude Opus 4.6", description: "Highest quality" },
-  { value: "gpt-5.4", label: "GPT-5.4", description: "OpenAI flagship" },
-  { value: "grok-4", label: "Grok 4", description: "xAI" },
-];
+import { POE_TEXT_MODEL_OPTIONS } from "../../lib/poe-text-models";
 
 /** Strip surrounding quote marks from AI-generated text. */
 function sanitizeQuote(text: string) {
@@ -253,7 +244,7 @@ export function QuoteGenerator() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {AI_MODELS.map((m) => (
+                    {POE_TEXT_MODEL_OPTIONS.map((m) => (
                       <SelectItem key={m.value} value={m.value}>
                         <span className="font-medium">{m.label}</span>
                         <span className="text-muted-foreground ml-2 text-sm">— {m.description}</span>

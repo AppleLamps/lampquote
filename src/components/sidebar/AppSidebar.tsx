@@ -74,13 +74,13 @@ export function AppSidebar() {
                   Quote Generator
                 </Button>
               </Link>
-              <Link to="/flux">
+              <Link to="/grok-imagine">
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-3 h-10 text-foreground/80 hover:text-foreground hover:bg-glass/50 transition-all duration-200"
                 >
                   <Wand2 className="h-4 w-4" />
-                  Flux Prompt Generator
+                  Grok Imagine Prompt
                 </Button>
               </Link>
               <Link to="/image">
