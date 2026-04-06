@@ -3,33 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Copy, Save } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { postJson } from "@/lib/api";
+import { Loader2, Sparkles, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const AI_MODELS = [
-  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash', description: 'Fast & balanced' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Best reasoning' },
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Good balance' },
-  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', description: 'Fastest' },
-  { value: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', description: 'Latest reasoning' },
-  { value: 'openai/gpt-5', label: 'GPT-5', description: 'Powerful all-rounder' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini', description: 'Cost effective' },
-  { value: 'openai/gpt-5-nano', label: 'GPT-5 Nano', description: 'Ultra fast' },
-  { value: 'openai/gpt-5.2', label: 'GPT-5.2', description: 'Enhanced reasoning' },
+  { value: "Gemini-3-Flash", label: "Gemini 3 Flash", description: "Fast & balanced" },
+  { value: "Gemini-3-Pro", label: "Gemini 3 Pro", description: "Strong reasoning" },
+  { value: "Claude-Sonnet-4.6", label: "Claude Sonnet 4.6", description: "Capable generalist" },
+  { value: "Claude-Opus-4.6", label: "Claude Opus 4.6", description: "Highest quality" },
+  { value: "GPT-5.4", label: "GPT-5.4", description: "OpenAI flagship" },
+  { value: "Grok-4", label: "Grok 4", description: "xAI" },
 ];
-
 
 export function FluxPromptGenerator() {
   const [inputText, setInputText] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [additionalDirections, setAdditionalDirections] = useState("");
-  const [selectedModel, setSelectedModel] = useState("google/gemini-3-flash-preview");
+  const [selectedModel, setSelectedModel] = useState("Gemini-3-Flash");
   const { toast } = useToast();
-  const { user } = useAuth();
-  
 
   const generatePrompt = async () => {
     if (!inputText.trim()) {
@@ -43,20 +36,17 @@ export function FluxPromptGenerator() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-flux-prompt', {
-        body: {
-          text: inputText.trim(),
-          directions: additionalDirections.trim() || undefined,
-          model: selectedModel,
-        }
+      const data = await postJson<{ prompt?: string; error?: string }>("/api/generate-flux-prompt", {
+        text: inputText.trim(),
+        directions: additionalDirections.trim() || undefined,
+        model: selectedModel,
       });
-
-      if (error) {
-        throw error;
-      }
 
       if (data.error) {
         throw new Error(data.error);
+      }
+      if (!data.prompt) {
+        throw new Error("No prompt in response");
       }
 
       setGeneratedPrompt(data.prompt);
@@ -65,10 +55,10 @@ export function FluxPromptGenerator() {
         description: "Your flux prompt has been created!",
       });
     } catch (error) {
-      console.error('Error generating prompt:', error);
+      console.error("Error generating prompt:", error);
       toast({
         title: "Generation Failed",
-        description: error.message || "Failed to generate prompt. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate prompt. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -80,7 +70,7 @@ export function FluxPromptGenerator() {
     setInputText("");
     setGeneratedPrompt("");
     setAdditionalDirections("");
-    setSelectedModel("google/gemini-3-flash-preview");
+    setSelectedModel("Gemini-3-Flash");
   };
 
   const handleCopyPrompt = async () => {
@@ -93,7 +83,7 @@ export function FluxPromptGenerator() {
         description: "The prompt has been copied to your clipboard.",
       });
     } catch (error) {
-      console.error('Error copying prompt:', error);
+      console.error("Error copying prompt:", error);
       toast({
         title: "Copy Failed",
         description: "Failed to copy prompt. Please try again.",
@@ -104,7 +94,6 @@ export function FluxPromptGenerator() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
-      {/* Hero Section */}
       <div className="flex-1 container mx-auto px-4 py-12 max-w-5xl">
         <div className="text-center mb-20 animate-fade-in-up">
           <div className="inline-flex items-center gap-4 mb-8">
@@ -121,12 +110,11 @@ export function FluxPromptGenerator() {
               Transform your ideas into perfect image prompts
             </p>
             <p className="text-xl text-muted-foreground/80 max-w-3xl mx-auto leading-relaxed font-inter font-light">
-              Describe your concept and generate detailed, optimized prompts for image generation with Flux
+              Describe your concept and generate detailed prompts for image generation (Poe API)
             </p>
           </div>
         </div>
 
-        {/* Input Section */}
         <Card variant="floating" className="mb-12 overflow-hidden relative group animate-fade-in-up">
           <div className="absolute inset-0 bg-gradient-accent opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
           <CardContent className="p-10 relative z-10">
@@ -163,9 +151,7 @@ export function FluxPromptGenerator() {
               </div>
 
               <div className="space-y-4">
-                <label className="text-lg font-semibold text-foreground font-inter tracking-wide">
-                  AI Model
-                </label>
+                <label className="text-lg font-semibold text-foreground font-inter tracking-wide">Poe model</label>
                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isLoading}>
                   <SelectTrigger className="bg-card/50 border-border/50 backdrop-blur-sm">
                     <SelectValue />
@@ -203,13 +189,7 @@ export function FluxPromptGenerator() {
                 </Button>
 
                 {(inputText || generatedPrompt || additionalDirections) && (
-                  <Button
-                    variant="luxury"
-                    size="lg"
-                    onClick={clearAll}
-                    disabled={isLoading}
-                    className="h-12 font-inter"
-                  >
+                  <Button variant="luxury" size="lg" onClick={clearAll} disabled={isLoading} className="h-12 font-inter">
                     Clear All
                   </Button>
                 )}
@@ -218,13 +198,15 @@ export function FluxPromptGenerator() {
           </CardContent>
         </Card>
 
-        {/* Generated Prompt Section */}
         {generatedPrompt && (
           <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
             <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-primary rounded-full shadow-glow"></div>
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-primary/10 rounded-full blur-3xl animate-float"></div>
-            <div className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float" style={{ animationDelay: '2s' }}></div>
+            <div
+              className="absolute -bottom-20 -left-20 w-32 h-32 bg-gradient-primary/5 rounded-full blur-2xl animate-float"
+              style={{ animationDelay: "2s" }}
+            ></div>
             <CardContent className="p-16 relative z-10">
               <div className="text-center space-y-10">
                 <div className="relative inline-block animate-glow-pulse">
@@ -264,7 +246,6 @@ export function FluxPromptGenerator() {
         )}
       </div>
 
-      {/* Footer */}
       <footer className="border-t border-glass-border bg-gradient-card/60 backdrop-blur-xl relative">
         <div className="absolute inset-0 bg-gradient-accent/10"></div>
         <div className="container mx-auto px-4 py-12 text-center relative z-10">
@@ -273,7 +254,7 @@ export function FluxPromptGenerator() {
               <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent w-32"></div>
             </div>
             <p className="text-base text-muted-foreground/80 font-inter font-light tracking-wide">
-              Powered by AI • Create perfect prompts for Flux image generation
+              Powered by Poe • Create prompts for Flux and other image models
             </p>
           </div>
         </div>

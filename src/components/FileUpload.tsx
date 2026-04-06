@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Paperclip, File, FileImage, X } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 export interface UploadedFile {
   id: string;
   name: string;
+  /** data: URL or blob URL; API expects data URLs for server-side processing */
   url: string;
   type: string;
   size: number;
@@ -19,68 +18,59 @@ interface FileUploadProps {
   disabled?: boolean;
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
-    if (!selectedFiles || !user) return;
+    if (!selectedFiles) return;
 
     setIsUploading(true);
     const uploadPromises: Promise<UploadedFile | null>[] = [];
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
+
+      // Vercel has a 4.5 MB request body limit; base64 adds ~33% overhead,
+      // so cap individual files at 3 MB to stay safely under the limit.
+      if (file.size > 3 * 1024 * 1024) {
         toast({
           title: "File too large",
-          description: `${file.name} is larger than 10MB`,
+          description: `${file.name} is larger than 3 MB. Please resize or compress it first.`,
           variant: "destructive",
         });
         continue;
       }
 
-      const fileId = `${user.id}/${Date.now()}-${file.name}`;
-      
+      const id = `local-${Date.now()}-${i}-${file.name}`;
+
       uploadPromises.push(
-        supabase.storage
-          .from('quote-attachments')
-          .upload(fileId, file)
-          .then(async ({ data, error }) => {
-            if (error) {
-              toast({
-                title: "Upload failed",
-                description: `Failed to upload ${file.name}`,
-                variant: "destructive",
-              });
-              return null;
-            }
-            
-            const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-              .from('quote-attachments')
-              .createSignedUrl(data.path, 3600);
-
-            if (signedUrlError || !signedUrlData) {
-              toast({
-                title: "Upload failed",
-                description: `Failed to get URL for ${file.name}`,
-                variant: "destructive",
-              });
-              return null;
-            }
-
-            return {
-              id: data.path,
-              name: file.name,
-              url: signedUrlData.signedUrl,
-              type: file.type,
-              size: file.size,
-            };
+        readFileAsDataUrl(file)
+          .then((dataUrl) => ({
+            id,
+            name: file.name,
+            url: dataUrl,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+          }))
+          .catch(() => {
+            toast({
+              title: "Read failed",
+              description: `Could not read ${file.name}`,
+              variant: "destructive",
+            });
+            return null;
           })
       );
     }
@@ -88,64 +78,49 @@ export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) 
     try {
       const uploadResults = await Promise.all(uploadPromises);
       const successfulUploads = uploadResults.filter((result): result is UploadedFile => result !== null);
-      
+
       if (successfulUploads.length > 0) {
         onFilesChange([...files, ...successfulUploads]);
         toast({
-          title: "Files uploaded",
-          description: `${successfulUploads.length} file(s) uploaded successfully`,
+          title: "Files attached",
+          description: `${successfulUploads.length} file(s) ready to send with your request`,
         });
       }
-    } catch (error) {
+    } catch {
       toast({
-        title: "Upload error",
-        description: "An error occurred while uploading files",
+        title: "Error",
+        description: "Something went wrong reading files",
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
 
-  const removeFile = async (fileToRemove: UploadedFile) => {
-    try {
-      // Remove from storage
-      await supabase.storage
-        .from('quote-attachments')
-        .remove([fileToRemove.id]);
-
-      // Update local state
-      onFilesChange(files.filter(file => file.id !== fileToRemove.id));
-      
-      toast({
-        title: "File removed",
-        description: `${fileToRemove.name} has been removed`,
-      });
-    } catch (error) {
-      toast({
-        title: "Remove failed",
-        description: "Failed to remove file",
-        variant: "destructive",
-      });
-    }
+  const removeFile = (fileToRemove: UploadedFile) => {
+    onFilesChange(files.filter((file) => file.id !== fileToRemove.id));
+    toast({
+      title: "File removed",
+      description: `${fileToRemove.name} has been removed`,
+    });
   };
 
   const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) {
+    if (type.startsWith("image/")) {
       return <FileImage className="h-4 w-4" />;
     }
     return <File className="h-4 w-4" />;
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
+    const sizes = ["Bytes", "KB", "MB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   return (
@@ -160,10 +135,10 @@ export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) 
           className="font-inter"
         >
           <Paperclip className="h-4 w-4" />
-          {isUploading ? 'Uploading...' : 'Attach Files'}
+          {isUploading ? "Reading..." : "Attach Files"}
         </Button>
         <span className="text-sm text-muted-foreground font-inter">
-          Images, documents, max 10MB each
+          Images, PDFs, Word docs &amp; text files, max 3 MB each
         </span>
       </div>
 

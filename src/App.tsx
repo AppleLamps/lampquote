@@ -5,8 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
-import { AuthPage } from "@/components/auth/AuthPage";
-import { useAuth } from "@/hooks/useAuth";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Index from "./pages/Index";
@@ -39,20 +37,6 @@ function EnhancedSidebarTrigger() {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthPage />;
-  }
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">

@@ -1,33 +1,19 @@
 import { useState } from "react";
-import { Search, BookOpen, Trash2, LogOut, User, Quote as QuoteIcon, Sparkles, Wand2, ImageIcon } from "lucide-react";
+import { Search, Trash2, Quote as QuoteIcon, Sparkles, Wand2, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { useQuotes, Quote } from "@/hooks/useQuotes";
-import { useAuth } from "@/hooks/useAuth";
-
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { user, signOut } = useAuth();
-  const { quotes, loading, deleteQuote } = useQuotes(user?.id);
+  const { quotes, loading, deleteQuote } = useQuotes();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredQuotes = quotes.filter(quote =>
+  const filteredQuotes = quotes.filter((quote) =>
     quote.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -49,7 +35,7 @@ export function AppSidebar() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">My Quotes</h2>
-              <p className="text-xs text-muted-foreground">Inspiration Library</p>
+              <p className="text-xs text-muted-foreground">Saved in this browser</p>
             </div>
           </div>
         )}
@@ -72,7 +58,6 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* Navigation */}
           {!isCollapsed && (
             <div className="space-y-2">
               <Link to="/">
@@ -122,16 +107,14 @@ export function AppSidebar() {
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-pulse flex items-center gap-2 text-muted-foreground">
                       <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                      <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                     </div>
                   </div>
                 ) : filteredQuotes.length === 0 ? (
                   <Card variant="glass" className="p-6 text-center">
                     <QuoteIcon className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {searchQuery ? "No quotes found" : "No quotes yet"}
-                    </p>
+                    <p className="text-sm text-muted-foreground mb-1">{searchQuery ? "No quotes found" : "No quotes yet"}</p>
                     <p className="text-xs text-muted-foreground/70">
                       {searchQuery ? "Try a different search term" : "Generate your first quote to get started"}
                     </p>
@@ -149,10 +132,10 @@ export function AppSidebar() {
                         </blockquote>
                         <div className="flex items-center justify-between">
                           <time className="text-xs text-muted-foreground/70 font-medium">
-                            {new Date(quote.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
+                            {new Date(quote.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
                             })}
                           </time>
                           <Button
@@ -166,7 +149,6 @@ export function AppSidebar() {
                         </div>
                       </div>
 
-                      {/* Subtle gradient overlay on hover */}
                       <div className="absolute inset-0 rounded-2xl bg-gradient-primary opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none" />
                     </Card>
                   ))
@@ -175,37 +157,7 @@ export function AppSidebar() {
             </ScrollArea>
           </div>
         </div>
-
-        {/* Account info and sign out - properly positioned at bottom */}
-        {!isCollapsed && (
-          <div className="p-4 border-t border-glass-border/50 space-y-3">
-            <Card variant="glass" className="p-3">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-lg bg-gradient-accent">
-                  <User className="h-3.5 w-3.5 text-foreground/70" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground/80 truncate">
-                    {user?.email}
-                  </p>
-                  <p className="text-xs text-muted-foreground/70">Premium User</p>
-                </div>
-              </div>
-            </Card>
-
-
-            <Button
-              variant="ghost"
-              onClick={signOut}
-              className="w-full justify-start gap-3 h-10 text-muted-foreground/80 hover:text-foreground hover:bg-glass/50 transition-all duration-200"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
-        )}
       </SidebarContent>
-      
     </Sidebar>
   );
 }

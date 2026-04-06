@@ -3,18 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { postJson } from "@/lib/api";
 import { Loader2, Sparkles, ImageIcon, Download } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { FileUpload, UploadedFile } from "@/components/FileUpload";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 
 const IMAGE_MODELS = [
-  { value: 'google/gemini-3.1-flash-image-preview', label: 'Nano Banana 2', description: 'Fast & high quality' },
-  { value: 'google/gemini-3-pro-image-preview', label: 'Nano Banana Pro', description: 'Best quality (slower)' },
-  { value: 'google/gemini-2.5-flash-image', label: 'Nano Banana', description: 'Fast generation' },
+  { value: "GPT-Image-1.5", label: "GPT Image 1.5", description: "Versatile OpenAI image" },
+  { value: "Imagen-4", label: "Imagen 4", description: "Google Imagen" },
+  { value: "FLUX-pro-1.1", label: "FLUX Pro 1.1", description: "High-quality diffusion" },
+  { value: "DALL-E-3", label: "DALL-E 3", description: "OpenAI classic" },
+  { value: "FLUX-schnell", label: "FLUX Schnell", description: "Fast FLUX" },
 ];
 
 const STEP_MESSAGES = [
@@ -31,11 +32,9 @@ export function ImageGenerator() {
   const [progress, setProgress] = useState(0);
   const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
   const [additionalDirections, setAdditionalDirections] = useState("");
-  const [selectedModel, setSelectedModel] = useState("google/gemini-3.1-flash-image-preview");
+  const [selectedModel, setSelectedModel] = useState("GPT-Image-1.5");
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  // Animate progress bar during loading
   useEffect(() => {
     if (!isLoading) {
       setProgress(0);
@@ -43,15 +42,13 @@ export function ImageGenerator() {
       return;
     }
 
-    // Move to step 2 after ~6s
     const stepTimer = setTimeout(() => {
       setLoadingStep(1);
     }, STEP_MESSAGES[0].duration);
 
-    // Smooth progress animation
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 92) return prev; // cap at 92 until done
+        if (prev >= 92) return prev;
         return prev + (prev < 40 ? 2 : prev < 70 ? 1 : 0.3);
       });
     }, 300);
@@ -77,17 +74,23 @@ export function ImageGenerator() {
     setProgress(0);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: {
-          text: inputText.trim(),
-          files: attachedFiles.length > 0 ? attachedFiles : undefined,
-          directions: additionalDirections.trim() || undefined,
-          model: selectedModel,
-        }
+      const data = await postJson<{
+        imageUrl?: string;
+        description?: string;
+        error?: string;
+      }>("/api/generate-image", {
+        text: inputText.trim(),
+        files: attachedFiles.length > 0 ? attachedFiles : undefined,
+        directions: additionalDirections.trim() || undefined,
+        model: selectedModel,
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      if (!data.imageUrl) {
+        throw new Error("No image in response");
+      }
 
       setProgress(100);
       setGeneratedImage(data.imageUrl);
@@ -96,11 +99,11 @@ export function ImageGenerator() {
         title: "Image Generated",
         description: "Your visual representation has been created!",
       });
-    } catch (error: any) {
-      console.error('Error generating image:', error);
+    } catch (error: unknown) {
+      console.error("Error generating image:", error);
       toast({
         title: "Generation Failed",
-        description: error.message || "Failed to generate image. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate image. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -114,21 +117,45 @@ export function ImageGenerator() {
     setImageDescription("");
     setAttachedFiles([]);
     setAdditionalDirections("");
-    setSelectedModel("google/gemini-3.1-flash-image-preview");
+    setSelectedModel("GPT-Image-1.5");
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!generatedImage) return;
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = `lampscribe-image-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({
-      title: "Image Downloaded",
-      description: "The image has been saved to your device.",
-    });
+
+    // data: URLs download directly; for cross-origin hosted URLs the browser
+    // ignores the `download` attribute, so we fetch the bytes first.
+    try {
+      let objectUrl = generatedImage;
+      let shouldRevoke = false;
+
+      if (!generatedImage.startsWith("data:")) {
+        const response = await fetch(generatedImage);
+        if (!response.ok) throw new Error("Fetch failed");
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        shouldRevoke = true;
+      }
+
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `lampscribe-image-${Date.now()}.png`;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if (shouldRevoke) URL.revokeObjectURL(objectUrl);
+
+      toast({ title: "Image Downloaded", description: "The image has been saved to your device." });
+    } catch {
+      // CORS block or network error — fall back to opening in a new tab
+      window.open(generatedImage, "_blank", "noopener");
+      toast({
+        title: "Download blocked",
+        description: "Opened the image in a new tab — right-click it and choose 'Save image as…'",
+      });
+    }
   };
 
   return (
@@ -145,7 +172,7 @@ export function ImageGenerator() {
                 <Textarea
                   id="input-text"
                   variant="glass"
-                  placeholder="Share your thoughts, paste text, or attach images — AI will create a visual representation..."
+                  placeholder="Share your thoughts, paste text, or attach images — Poe will create a visual representation..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   className="min-h-[200px] text-base leading-relaxed font-inter"
@@ -154,11 +181,7 @@ export function ImageGenerator() {
               </div>
 
               <div className="transform hover:scale-[1.02] transition-all duration-300">
-                <FileUpload
-                  onFilesChange={setAttachedFiles}
-                  files={attachedFiles}
-                  disabled={isLoading}
-                />
+                <FileUpload onFilesChange={setAttachedFiles} files={attachedFiles} disabled={isLoading} />
               </div>
 
               <div className="space-y-4">
@@ -178,9 +201,7 @@ export function ImageGenerator() {
               </div>
 
               <div className="space-y-4">
-                <label className="text-lg font-semibold text-foreground font-inter tracking-wide">
-                  Image Model
-                </label>
+                <label className="text-lg font-semibold text-foreground font-inter tracking-wide">Poe image bot</label>
                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isLoading}>
                   <SelectTrigger className="bg-card/50 border-border/50 backdrop-blur-sm">
                     <SelectValue />
@@ -218,13 +239,7 @@ export function ImageGenerator() {
                 </Button>
 
                 {(inputText || generatedImage || attachedFiles.length > 0 || additionalDirections) && (
-                  <Button
-                    variant="luxury"
-                    size="lg"
-                    onClick={clearAll}
-                    disabled={isLoading}
-                    className="h-12 font-inter"
-                  >
+                  <Button variant="luxury" size="lg" onClick={clearAll} disabled={isLoading} className="h-12 font-inter">
                     Clear All
                   </Button>
                 )}
@@ -233,7 +248,6 @@ export function ImageGenerator() {
           </CardContent>
         </Card>
 
-        {/* Loading Progress Section */}
         {isLoading && (
           <Card variant="premium" className="relative overflow-hidden mb-12 animate-fade-in-up">
             <CardContent className="p-10">
@@ -244,16 +258,11 @@ export function ImageGenerator() {
                     <div className="absolute inset-0 h-8 w-8 bg-primary/20 blur-lg"></div>
                   </div>
                   <div className="flex-1">
-                    <p className="text-lg font-semibold text-foreground font-inter animate-pulse">
-                      {STEP_MESSAGES[loadingStep].text}
-                    </p>
-                    <p className="text-sm text-muted-foreground font-inter mt-1">
-                      Step {loadingStep + 1} of 2
-                    </p>
+                    <p className="text-lg font-semibold text-foreground font-inter animate-pulse">{STEP_MESSAGES[loadingStep].text}</p>
+                    <p className="text-sm text-muted-foreground font-inter mt-1">Step {loadingStep + 1} of 2</p>
                   </div>
                 </div>
                 <Progress value={progress} className="h-2" />
-                {/* Shimmer placeholder for the image */}
                 <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden">
                   <Skeleton className="w-full h-[300px] md:h-[400px]" />
                 </div>
@@ -262,7 +271,6 @@ export function ImageGenerator() {
           </Card>
         )}
 
-        {/* Generated Image Section */}
         {generatedImage && !isLoading && (
           <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">
             <div className="absolute inset-0 bg-gradient-primary opacity-5 group-hover:opacity-10 transition-all duration-700"></div>
@@ -275,11 +283,7 @@ export function ImageGenerator() {
                 </div>
 
                 <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-floating">
-                  <img
-                    src={generatedImage}
-                    alt={imageDescription || "AI generated image"}
-                    className="w-full h-auto"
-                  />
+                  <img src={generatedImage} alt={imageDescription || "AI generated image"} className="w-full h-auto" />
                 </div>
 
                 {imageDescription && (
@@ -317,7 +321,7 @@ export function ImageGenerator() {
               <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent w-32"></div>
             </div>
             <p className="text-base text-muted-foreground/80 font-inter font-light tracking-wide">
-              Powered by AI • Transform your words into imagery
+              Powered by Poe • URLs may be temporary; download if you need to keep an image
             </p>
           </div>
         </div>
