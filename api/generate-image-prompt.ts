@@ -1,4 +1,4 @@
-import { poeChatJson, getAssistantText, parseDataUrl, withCorsAndAuth } from "../lib/poe-server.js";
+import { poeChatJson, getAssistantText, stripAIArtifacts, parseDataUrl, withCorsAndAuth } from "../lib/poe-server.js";
 import {
   DEFAULT_IMAGE_PROMPT_HELPER_MODEL,
   resolveAllowedTextModel,
@@ -97,7 +97,7 @@ Output only the final image prompt, nothing else.`,
     max_tokens: 1500,
   });
 
-  const optimizedPrompt = getAssistantText(promptData!).trim();
+  const optimizedPrompt = stripAIArtifacts(getAssistantText(promptData!));
   if (!optimizedPrompt) {
     throw new Error("Failed to generate optimized prompt");
   }

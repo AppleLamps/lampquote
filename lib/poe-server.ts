@@ -78,6 +78,29 @@ export function getAssistantText(data: {
   return "";
 }
 
+/**
+ * Remove model-generated thinking traces and citation markers from AI output.
+ *
+ * Strips:
+ *  - `<think>…</think>` / `<thinking>…</thinking>` blocks (including multiline)
+ *  - `<output>…</output>` wrapper tags (keeps inner content)
+ *  - Inline citation markers: `[1]`, `[1, 2]`, `【1†source】`, etc.
+ *  - Leftover leading/trailing whitespace
+ */
+export function stripAIArtifacts(text: string): string {
+  let out = text;
+  // Remove <think>…</think> and <thinking>…</thinking> blocks (separate patterns to avoid cross-matching)
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  out = out.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "");
+  // Unwrap <output>…</output> wrapper (keep inner content)
+  out = out.replace(/<output>([\s\S]*?)<\/output>/gi, "$1");
+  // Remove bracketed citation markers like [1], [2, 3], [1][2]
+  out = out.replace(/\[\d+(?:\s*,\s*\d+)*\]/g, "");
+  // Remove lenticular bracket citations like 【1†source】 or 【2:3†file.pdf】
+  out = out.replace(/【[^】]*】/g, "");
+  return out.trim();
+}
+
 /** Poe image bots often return markdown ![](url) or a hosted URL in message content. */
 export function extractImageUrlFromAssistant(data: {
   choices?: Array<{
