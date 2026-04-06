@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Paperclip, File, FileImage, X } from "lucide-react";
@@ -27,7 +27,45 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) {
+const MAX_DIMENSION = 2048;
+const JPEG_QUALITY = 0.8;
+
+/** Compress an image file using the canvas API. Returns a smaller data URL. */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+
+      // Down-scale if either dimension exceeds the cap
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Use JPEG for photos (non-transparent); keep PNG for transparency
+      const isPng = file.type === "image/png";
+      const mimeOut = isPng ? "image/png" : "image/jpeg";
+      const quality = isPng ? undefined : JPEG_QUALITY;
+      const dataUrl = canvas.toDataURL(mimeOut, quality);
+      resolve(dataUrl);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to load image")); };
+    img.src = url;
+  });
+}
+
+export const FileUpload = memo(function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -55,8 +93,9 @@ export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) 
 
       const id = `local-${Date.now()}-${i}-${file.name}`;
 
+      const isImage = file.type.startsWith("image/");
       uploadPromises.push(
-        readFileAsDataUrl(file)
+        (isImage ? compressImage(file) : readFileAsDataUrl(file))
           .then((dataUrl) => ({
             id,
             name: file.name,
@@ -181,4 +220,4 @@ export function FileUpload({ onFilesChange, files, disabled }: FileUploadProps) 
       )}
     </div>
   );
-}
+});

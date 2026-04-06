@@ -19,6 +19,25 @@ const AI_MODELS = [
   { value: "grok-4", label: "Grok 4", description: "xAI" },
 ];
 
+/** Strip surrounding quote marks from AI-generated text. */
+function sanitizeQuote(text: string) {
+  if (!text) return "";
+  const trimmed = text.trim();
+  const pairs: [string, string][] = [
+    ['"', '"'],
+    ['\u201c', '\u201d'],
+    ['\u00ab', '\u00bb'],
+    ['\u2039', '\u203a'],
+    ["'", "'"],
+  ];
+  for (const [open, close] of pairs) {
+    if (trimmed.startsWith(open) && trimmed.endsWith(close)) {
+      return trimmed.slice(open.length, trimmed.length - close.length).trim();
+    }
+  }
+  return trimmed;
+}
+
 export function QuoteGenerator() {
   const [inputText, setInputText] = useState("");
   const [generatedQuote, setGeneratedQuote] = useState("");
@@ -28,24 +47,6 @@ export function QuoteGenerator() {
   const [selectedModel, setSelectedModel] = useState("gemini-3-flash");
   const { toast } = useToast();
   const { saveQuote } = useQuotes();
-
-  const sanitizeQuote = (text: string) => {
-    if (!text) return "";
-    const trimmed = text.trim();
-    const pairs: [string, string][] = [
-      ['"', '"'],
-      ["“", "”"],
-      ["«", "»"],
-      ["‹", "›"],
-      ["'", "'"],
-    ];
-    for (const [open, close] of pairs) {
-      if (trimmed.startsWith(open) && trimmed.endsWith(close)) {
-        return trimmed.slice(open.length, trimmed.length - close.length).trim();
-      }
-    }
-    return trimmed;
-  };
 
   const generateQuote = async () => {
     if (!inputText.trim() && attachedFiles.length === 0) {
@@ -100,7 +101,7 @@ export function QuoteGenerator() {
 
   const handleSaveQuote = async () => {
     if (!generatedQuote) return;
-    await saveQuote(generatedQuote, inputText);
+    await saveQuote(generatedQuote);
   };
 
   const handleCopyQuote = async () => {

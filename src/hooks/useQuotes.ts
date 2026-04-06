@@ -11,7 +11,6 @@ function notifyQuotesChanged() {
 export interface Quote {
   id: string;
   content: string;
-  source_text?: string;
   created_at: string;
   updated_at: string;
 }
@@ -55,12 +54,11 @@ export function useQuotes() {
     };
   }, [syncFromStorage]);
 
-  const saveQuote = async (content: string, sourceText?: string) => {
+  const saveQuote = async (content: string) => {
     const now = new Date().toISOString();
     const row: Quote = {
       id: crypto.randomUUID(),
       content,
-      source_text: sourceText,
       created_at: now,
       updated_at: now,
     };

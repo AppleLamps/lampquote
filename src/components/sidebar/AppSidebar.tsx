@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useDeferredValue, useMemo } from "react";
 import { Search, Trash2, Quote as QuoteIcon, Sparkles, Wand2, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarHeader, useSidebar } from "@/components/ui/sidebar";
@@ -12,9 +12,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const { quotes, loading, deleteQuote } = useQuotes();
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearch = useDeferredValue(searchQuery);
 
-  const filteredQuotes = quotes.filter((quote) =>
-    quote.content.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredQuotes = useMemo(
+    () =>
+      quotes.filter((quote) =>
+        quote.content.toLowerCase().includes(deferredSearch.toLowerCase())
+      ),
+    [quotes, deferredSearch]
   );
 
   const handleDeleteQuote = async (quote: Quote) => {

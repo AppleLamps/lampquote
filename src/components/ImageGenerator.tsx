@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,45 +28,63 @@ const IMAGE_MODELS = [
 ];
 
 const STEP_MESSAGES = [
-  { text: "Crafting the perfect prompt...", duration: 6000 },
-  { text: "Generating your image...", duration: 0 },
+  "Crafting the perfect prompt...",
+  "Generating your image...",
 ];
 
-export function ImageGenerator() {
-  const [inputText, setInputText] = useState("");
-  const [generatedImage, setGeneratedImage] = useState("");
-  const [imageDescription, setImageDescription] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
+/** Isolated progress indicator — receives the real pipeline step from the parent. */
+const LoadingProgress = memo(function LoadingProgress({ step }: { step: 0 | 1 }) {
   const [progress, setProgress] = useState(0);
-  const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
-  const [additionalDirections, setAdditionalDirections] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-image-1.5");
-  const { toast } = useToast();
+
+  // Reset progress when the step advances
+  useEffect(() => {
+    setProgress(0);
+  }, [step]);
 
   useEffect(() => {
-    if (!isLoading) {
-      setProgress(0);
-      setLoadingStep(0);
-      return;
-    }
-
-    const stepTimer = setTimeout(() => {
-      setLoadingStep(1);
-    }, STEP_MESSAGES[0].duration);
-
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 92) return prev;
         return prev + (prev < 40 ? 2 : prev < 70 ? 1 : 0.3);
       });
     }, 300);
+    return () => clearInterval(interval);
+  }, [step]);
 
-    return () => {
-      clearTimeout(stepTimer);
-      clearInterval(interval);
-    };
-  }, [isLoading]);
+  return (
+    <Card variant="premium" className="relative overflow-hidden mb-12 animate-fade-in-up">
+      <CardContent className="p-10">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              <div className="absolute inset-0 h-8 w-8 bg-primary/20 blur-lg"></div>
+            </div>
+            <div className="flex-1">
+              <p className="text-lg font-semibold text-foreground font-inter animate-pulse">{STEP_MESSAGES[step]}</p>
+              <p className="text-sm text-muted-foreground font-inter mt-1">Step {step + 1} of 2</p>
+            </div>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden">
+            <Skeleton className="w-full h-[300px] md:h-[400px]" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+export function ImageGenerator() {
+  const [inputText, setInputText] = useState("");
+  const [generatedImage, setGeneratedImage] = useState("");
+  const [imageDescription, setImageDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<0 | 1>(0);
+  const [attachedFiles, setAttachedFiles] = useState<UploadedFile[]>([]);
+  const [additionalDirections, setAdditionalDirections] = useState("");
+  const [selectedModel, setSelectedModel] = useState("gpt-image-1.5");
+  const { toast } = useToast();
 
   const generateImage = async () => {
     if (!inputText.trim() && attachedFiles.length === 0) {
@@ -80,30 +98,38 @@ export function ImageGenerator() {
 
     setIsLoading(true);
     setLoadingStep(0);
-    setProgress(0);
 
     try {
-      const data = await postJson<{
+      // Step 1: Optimize prompt
+      const promptData = await postJson<{ prompt?: string; error?: string }>(
+        "/api/generate-image-prompt",
+        {
+          text: inputText.trim(),
+          files: attachedFiles.length > 0 ? attachedFiles : undefined,
+          directions: additionalDirections.trim() || undefined,
+        }
+      );
+
+      if (promptData.error) throw new Error(promptData.error);
+      if (!promptData.prompt) throw new Error("No prompt in response");
+
+      // Step 2: Generate image from optimized prompt
+      setLoadingStep(1);
+
+      const imageData = await postJson<{
         imageUrl?: string;
         description?: string;
         error?: string;
       }>("/api/generate-image", {
-        text: inputText.trim(),
-        files: attachedFiles.length > 0 ? attachedFiles : undefined,
-        directions: additionalDirections.trim() || undefined,
+        prompt: promptData.prompt,
         model: selectedModel,
       });
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      if (!data.imageUrl) {
-        throw new Error("No image in response");
-      }
+      if (imageData.error) throw new Error(imageData.error);
+      if (!imageData.imageUrl) throw new Error("No image in response");
 
-      setProgress(100);
-      setGeneratedImage(data.imageUrl);
-      setImageDescription(data.description || "");
+      setGeneratedImage(imageData.imageUrl);
+      setImageDescription(imageData.description || "");
       toast({
         title: "Image Generated",
         description: "Your visual representation has been created!",
@@ -257,28 +283,7 @@ export function ImageGenerator() {
           </CardContent>
         </Card>
 
-        {isLoading && (
-          <Card variant="premium" className="relative overflow-hidden mb-12 animate-fade-in-up">
-            <CardContent className="p-10">
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                    <div className="absolute inset-0 h-8 w-8 bg-primary/20 blur-lg"></div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-lg font-semibold text-foreground font-inter animate-pulse">{STEP_MESSAGES[loadingStep].text}</p>
-                    <p className="text-sm text-muted-foreground font-inter mt-1">Step {loadingStep + 1} of 2</p>
-                  </div>
-                </div>
-                <Progress value={progress} className="h-2" />
-                <div className="max-w-4xl mx-auto rounded-2xl overflow-hidden">
-                  <Skeleton className="w-full h-[300px] md:h-[400px]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {isLoading && <LoadingProgress step={loadingStep} />}
 
         {generatedImage && !isLoading && (
           <Card variant="premium" className="relative overflow-hidden group animate-slide-in-from-bottom">

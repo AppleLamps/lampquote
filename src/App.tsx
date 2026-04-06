@@ -1,18 +1,17 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import Index from "./pages/Index";
-import FluxPrompt from "./pages/FluxPrompt";
-import ImageGen from "./pages/ImageGen";
-import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const Index = lazy(() => import("./pages/Index"));
+const FluxPrompt = lazy(() => import("./pages/FluxPrompt"));
+const ImageGen = lazy(() => import("./pages/ImageGen"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 function EnhancedSidebarTrigger() {
   const { state, toggleSidebar } = useSidebar();
@@ -49,12 +48,14 @@ function AppContent() {
             </h1>
           </header>
           <div className="flex-1">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/flux" element={<FluxPrompt />} />
-              <Route path="/image" element={<ImageGen />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted-foreground">Loading…</div></div>}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/flux" element={<FluxPrompt />} />
+                <Route path="/image" element={<ImageGen />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </div>
         </main>
       </div>
@@ -63,15 +64,13 @@ function AppContent() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <TooltipProvider>
+    <Toaster />
+    <Sonner />
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  </TooltipProvider>
 );
 
 export default App;
